@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1e40af">
+    <title>Site Safety Inspection | 地盤安全檢查系統</title>
+
+    <!-- Firebase SDK -->
+    <!-- Storage removed - using Base64 in Realtime Database -->
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root { --primary: #2563eb; --primary-dark: #1e40af; --danger: #dc2626; --warning: #f59e0b; --success: #16a34a; --gray: #6b7280; --light: #f3f4f6; --contractor: #f59e0b; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Hiragino Sans TC', 'Microsoft JhengHei', sans-serif; background: #f8fafc; padding: 0; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+        .app-container { max-width: 100%; min-height: 100vh; background: white; position: relative; }
+
+        /* Auth Styles */
+        .auth-container { display: flex !important; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); }
+        .auth-box { background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .auth-title { font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 8px; color: #1f2937; }
+        .auth-subtitle { text-align: center; color: #6b7280; margin-bottom: 24px; font-size: 0.875rem; }
+        .auth-field { margin-bottom: 16px; }
+        .auth-label { display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .auth-input { width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1rem; transition: all 0.2s; }
+        .auth-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .role-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .role-option { padding: 16px; border: 2px solid #e5e7eb; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .role-option.selected { border-color: #3b82f6; background: #eff6ff; }
+        .role-icon { font-size: 2rem; margin-bottom: 8px; }
+        .role-name { font-weight: 600; font-size: 0.875rem; }
+        .btn-auth { width: 100%; padding: 14px; background: #3b82f6; color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; }
+        .btn-auth:hover { background: #1d4ed8; }
+        .btn-auth.secondary { background: #f3f4f6; color: #374151; }
+        .btn-auth.secondary:hover { background: #e5e7eb; }
+        .auth-error { color: #dc2626; font-size: 0.875rem; margin-top: 12px; text-align: center; display: none; }
+        .auth-toggle { text-align: center; margin-top: 16px; font-size: 0.875rem; color: #6b7280; }
+        .auth-toggle a { color: #3b82f6; cursor: pointer; font-weight: 600; }
+
+        /* Email Config Section */
+        .email-config { background: #f0fdf4; border: 2px solid #16a34a; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+        .email-config-title { font-weight: 700; color: #166534; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+        /* Reports List */
+        .reports-list { padding: 16px; }
+        .report-card { background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+        .report-card:hover { border-color: #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .report-card.pending { border-left: 4px solid #f59e0b; }
+        .report-card.responded { border-left: 4px solid #16a34a; }
+        .report-card.closed { border-left: 4px solid #6b7280; }
+        .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .report-id { font-weight: 700; color: #1f2937; font-size: 1.1rem; }
+        .report-status { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-responded { background: #d1fae5; color: #065f46; }
+        .status-closed { background: #f3f4f6; color: #374151; }
+        .report-info { font-size: 0.875rem; color: #6b7280; margin-bottom: 4px; }
+        .report-meta { display: flex; gap: 16px; font-size: 0.75rem; color: #9ca3af; margin-top: 8px; }
+
+        /* Sync Status */
+        .sync-status { position: fixed; top: 70px; right: 16px; padding: 8px 16px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; z-index: 1000; display: flex; align-items: center; gap: 6px; transition: all 0.3s; }
+        .sync-status.online { background: #d1fae5; color: #065f46; }
+        .sync-status.offline { background: #fee2e2; color: #991b1b; }
+        .sync-status.syncing { background: #dbeafe; color: #1e40af; }
+        .user-badge { position: fixed; top: 70px; left: 16px; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; z-index: 1000; background: #1e40af; color: white; }
+
+        /* App Header */
+        .app-header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 16px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .app-header h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+        .app-header p { font-size: 0.875rem; opacity: 0.9; }
+        .header-actions { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); display: flex; gap: 8px; }
+        .header-btn { width: 36px; height: 36px; border: none; background: rgba(255,255,255,0.2); color: white; border-radius: 8px; cursor: pointer; font-size: 1.125rem; display: flex; align-items: center; justify-content: center; }
+
+        /* Progress & Mode */
+        .progress-bar { background: white; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; }
+        .progress-text { font-size: 0.875rem; color: #374151; font-weight: 500; white-space: nowrap; }
+        .progress-track { flex: 1; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #1d4ed8); border-radius: 4px; transition: width 0.3s ease; width: 0%; }
+        .mode-toggle { background: white; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .mode-btn { padding: 8px 16px; border: 2px solid #e5e7eb; background: white; border-radius: 20px; font-size: 0.875rem; font-weight: 500; color: #6b7280; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+        .mode-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
+
+        /* Categories */
+        .category-grid { padding: 16px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .category-card { background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+        .category-card:active { transform: scale(0.98); }
+        .category-card.selected { border-color: #3b82f6; background: #eff6ff; }
+        .category-card.completed { border-color: #16a34a; background: #f0fdf4; }
+        .category-icon { font-size: 2rem; margin-bottom: 8px; }
+        .category-name { font-size: 0.875rem; font-weight: 600; color: #1f2937; margin-bottom: 4px; }
+        .category-count { font-size: 0.75rem; color: #6b7280; }
+        .category-card.expanded { grid-column: 1 / -1; text-align: left; padding: 14px; }
+        .category-card.expanded .category-icon, .category-card.expanded .category-name, .category-card.expanded .category-count { display: inline-block; margin-right: 8px; }
+        .quick-subitems { display: none; margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+        .category-card.expanded .quick-subitems { display: grid; }
+        .quick-subitem { border: 1px solid #dbe3ee; background: #fff; border-radius: 10px; padding: 10px 12px; font-size: .84rem; line-height: 1.25rem; cursor: pointer; }
+        .quick-subitem:hover { border-color: #3b82f6; background: #eff6ff; }
+        .quick-subitem.active { border-color: #2563eb; background: #dbeafe; font-weight: 600; }
+        @media (max-width: 700px) { .quick-subitems { grid-template-columns: 1fr; } }
+        .check-mark { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: #16a34a; color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 0.875rem; }
+        .category-card.completed .check-mark { display: flex; }
+
+        /* Inspection View */
+        .inspection-view { display: none; padding: 16px; padding-bottom: 100px; }
+        .inspection-view.active { display: block; }
+        .nav-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .back-btn { width: 40px; height: 40px; border: none; background: #f3f4f6; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.25rem; }
+        .nav-title { flex: 1; font-size: 1.125rem; font-weight: 700; color: #1f2937; }
+
+        /* Checklist Item */
+        .checklist-item { background: white; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; page-break-inside: avoid; }
+        .item-header { padding: 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+        .item-number { display: inline-block; width: 28px; height: 28px; background: #3b82f6; color: white; border-radius: 50%; text-align: center; line-height: 28px; font-size: 0.875rem; font-weight: 700; margin-right: 8px; }
+        .item-title { font-size: 1rem; font-weight: 600; color: #1f2937; margin-bottom: 8px; line-height: 1.4; }
+        .item-subtitle { font-size: 0.875rem; color: #6b7280; }
+        .badges { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .badge.critical { background: #fee2e2; color: #dc2626; }
+        .badge.high { background: #ffedd5; color: #ea580c; }
+        .badge.medium { background: #fef3c7; color: #d97706; }
+        .badge.freq { background: #e0e7ff; color: #4f46e5; }
+
+        /* Status */
+        .status-section { padding: 16px; border-bottom: 1px solid #e5e7eb; }
+        .status-label { font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 12px; display: block; }
+        .status-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .status-option { padding: 12px; border: 2px solid #e5e7eb; background: white; border-radius: 10px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .status-option.selected { border-width: 3px; }
+        .status-option.pass.selected { border-color: #16a34a; background: #f0fdf4; }
+        .status-option.fail.selected { border-color: #dc2626; background: #fef2f2; }
+        .status-option.na.selected { border-color: #6b7280; background: #f9fafb; }
+        .status-icon { font-size: 1.5rem; margin-bottom: 4px; }
+        .status-text { font-size: 0.875rem; font-weight: 600; }
+
+        /* Photos */
+        .photo-section { padding: 16px; background: #fafafa; }
+        .photo-label { font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
+        .photo-box { aspect-ratio: 4/3; background: white; border: 2px dashed #d1d5db; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; }
+        .photo-box.has-image { border-style: solid; border-color: #3b82f6; }
+        .photo-box input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
+        .photo-placeholder { text-align: center; color: #9ca3af; pointer-events: none; }
+        .photo-icon { font-size: 2rem; margin-bottom: 4px; }
+        .photo-text { font-size: 0.75rem; font-weight: 500; }
+        .photo-preview { position: absolute; inset: 0; background-size: cover; background-position: center; display: none; }
+        .photo-box.has-image .photo-preview { display: block; }
+        .photo-box.has-image .photo-placeholder { display: none; }
+        .remove-photo { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; background: rgba(220, 38, 38, 0.9); color: white; border: none; border-radius: 50%; font-size: 1rem; cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 100; }
+        .photo-box.has-image .remove-photo { display: flex; }
+        .photo-caption { font-size: 0.75rem; color: #6b7280; text-align: center; margin-top: 4px; }
+
+        /* Remarks & Sections */
+        .remarks-section { padding: 16px; border-top: 1px solid #e5e7eb; }
+        .remarks-field { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; resize: vertical; min-height: 80px; font-family: inherit; }
+        .remarks-field:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .inspector-section { background: #eff6ff; padding: 16px; border-top: 2px solid #3b82f6; }
+        .contractor-section { background: #fef3c7; padding: 16px; border-top: 2px solid #f59e0b; }
+        .section-label { font-size: 0.875rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .inspector-label { color: #1e40af; }
+        .contractor-label { color: #92400e; }
+
+        /* Bottom Actions */
+        .bottom-actions { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 16px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); }
+        .btn { flex: 1; padding: 14px 20px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:active { background: #1d4ed8; }
+        .btn-secondary { background: #f3f4f6; color: #374151; }
+        .btn-secondary:active { background: #e5e7eb; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+
+        /* Summary */
+        .summary-view { display: none; padding: 16px; padding-bottom: 100px; }
+        .summary-view.active { display: block; }
+        .summary-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .summary-title { font-size: 1.125rem; font-weight: 700; color: #1f2937; margin-bottom: 16px; }
+        .summary-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .stat-box { background: #f9fafb; padding: 16px; border-radius: 10px; text-align: center; }
+        .stat-number { font-size: 2rem; font-weight: 700; color: #3b82f6; }
+        .stat-label { font-size: 0.875rem; color: #6b7280; margin-top: 4px; }
+        .issue-list { margin-top: 16px; }
+        .issue-item { background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px; border-radius: 8px; margin-bottom: 8px; }
+        .issue-title { font-weight: 600; color: #991b1b; font-size: 0.875rem; }
+        .issue-category { font-size: 0.75rem; color: #dc2626; margin-top: 4px; }
+
+        /* Info Input */
+        .info-input-section { background: white; padding: 16px; border-bottom: 1px solid #e5e7eb; }
+        .info-grid { display: grid; gap: 12px; }
+        .info-field { display: flex; flex-direction: column; gap: 4px; }
+        .info-label { font-size: 0.875rem; font-weight: 600; color: #374151; }
+        .info-input { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; font-family: inherit; }
+        .info-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
+        /* Loading */
+        .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .loading-overlay.active { display: flex; }
+        .loading-spinner { width: 50px; height: 50px; border: 4px solid #f3f4f6; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { color: white; margin-top: 16px; font-weight: 600; }
+
+        /* Offline Banner */
+        .offline-banner { background: #dc2626; color: white; padding: 12px; text-align: center; font-size: 0.875rem; font-weight: 600; display: none; }
+        .offline-banner.active { display: block; }
+
+        /* Read Only Mode */
+        .read-only { opacity: 0.6; pointer-events: none; }
+        .read-only-note { background: #fef3c7; border: 2px solid #f59e0b; color: #92400e; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-weight: 600; text-align: center; }
+
+        /* Email Dialog */
+        .email-dialog { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 3000; padding: 20px; }
+        .email-dialog.active { display: flex; }
+        .email-box { background: white; border-radius: 16px; padding: 24px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        .email-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; }
+        .email-field { margin-bottom: 16px; }
+        .email-label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; color: #374151; }
+        .email-input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; }
+        .email-preview { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 0.875rem; white-space: pre-wrap; }
+    </style>
+
+<style id="internal-control-upgrade">
+.local-only-badge{background:#e0f2fe;color:#075985;padding:7px 11px;border-radius:18px;font-size:.78rem;font-weight:700}
+.internal-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;padding:10px;background:#f8fafc;border:1px solid #dbe3ee;border-radius:12px}
+.internal-toolbar button,.internal-toolbar label{border:1px solid #cbd5e1;background:white;color:#1e3a8a;border-radius:9px;padding:9px 12px;font-weight:650;cursor:pointer;font-size:.82rem}
+.internal-toolbar button.primary{background:#2563eb;color:white;border-color:#2563eb}
+.internal-toolbar input[type=file]{display:none}.autosave-state{margin-left:auto;align-self:center;color:#64748b;font-size:.78rem}
+.selection-summary{grid-column:1/-1;position:sticky;top:0;z-index:5;background:#eff6ff;border:1px solid #93c5fd;padding:10px 12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.selection-summary button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700}
+.quick-subitem .pick-mark{float:right;color:#2563eb;font-weight:900}.quick-subitem:not(.active) .pick-mark{display:none}
+.report-searchbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.report-searchbar input,.report-searchbar select{padding:10px;border:1px solid #cbd5e1;border-radius:9px;min-width:180px}
+.validation-box{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:10px 12px;border-radius:10px;margin:10px 0;font-size:.86rem}
+@media(max-width:700px){.autosave-state{width:100%;margin-left:0}.internal-toolbar button,.internal-toolbar label{flex:1 1 44%;text-align:center}.selection-summary{position:static;align-items:flex-start;flex-direction:column}.selection-summary button{width:100%}}
+</style>
+</head>
+<body>
+    <div class="base64-notice" id="base64Notice" style="background: #dbeafe; color: #1e40af; padding: 8px; text-align: center; font-size: 0.75rem; font-weight: 600;">📷 Base64 模式：圖片存儲在 Realtime Database（限制 2MB/張）</div><div class="offline-banner" id="offlineBanner">📱 本機儲存 Local Storage - 報告只儲存在此裝置</div>
+
+    <!-- Auth Container -->
+    <div class="auth-container" id="authContainer">
+        <div class="auth-box" id="loginBox">
+            <div class="auth-title">🔍 Site Safety Inspection</div>
+            <div class="auth-subtitle">地盤安全檢查系統 v3.0</div>
+
+            <div class="auth-field">
+                <label class="auth-label">電郵 Email</label>
+                <input type="email" class="auth-input" id="loginEmail" placeholder="輸入電郵...">
+            </div>
+
+            <div class="auth-field">
+                <label class="auth-label">密碼 Password</label>
+                <input type="password" class="auth-input" id="loginPassword" placeholder="輸入密碼...">
+            </div>
+
+            <button class="btn-auth" onclick="login()">登入 Login</button>
+            <div class="auth-error" id="loginError"></div>
+
+            <div class="auth-toggle">
+                還沒有賬戶？<a onclick="showRegister()">立即註冊 Register</a>
+            </div>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; text-align: center;">
+                <a onclick="forceLogout()" style="color: #dc2626; font-size: 0.75rem; cursor: pointer;">🚪 清除登入狀態 Clear Login State</a>
+            </div>
+        </div>
+
+        <div class="auth-box" id="registerBox" style="display: none;">
+            <div class="auth-title">📝 註冊新賬戶 Register</div>
+            <div class="auth-subtitle">創建您的安全檢查賬戶</div>
+
+            <div class="auth-field">
+                <label class="auth-label">電郵 Email *</label>
+                <input type="email" class="auth-input" id="regEmail" placeholder="輸入電郵...">
+            </div>
+
+            <div class="auth-field">
+                <label class="auth-label">密碼 Password * (至少6位)</label>
+                <input type="password" class="auth-input" id="regPassword" placeholder="輸入密碼...">
+            </div>
+
+            <div class="auth-field">
+                <label class="auth-label">確認密碼 Confirm Password *</label>
+                <input type="password" class="auth-input" id="regConfirmPassword" placeholder="確認密碼...">
+            </div>
+
+            <div class="auth-field">
+                <label class="auth-label">姓名 Name *</label>
+                <input type="text" class="auth-input" id="regName" placeholder="輸入姓名...">
+            </div>
+
+            <div class="auth-field">
+                <label class="auth-label">公司名稱 Company Name</label>
+                <input type="text" class="auth-input" id="regCompany" placeholder="輸入公司名稱...">
+            </div>
+
+            <div class="auth-field">
+                <label class="auth-label">角色 Role *</label>
+                <div class="role-selector">
+                    <div class="role-option selected" data-role="inspector" onclick="selectRegRole('inspector')">
+                        <div class="role-icon">👷</div>
+                        <div class="role-name">駐地工程師<br>RSS Inspector</div>
+                    </div>
+                    <div class="role-option" data-role="contractor" onclick="selectRegRole('contractor')">
+                        <div class="role-icon">🏗️</div>
+                        <div class="role-name">承包商<br>Contractor</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-auth" onclick="register()">註冊 Register</button>
+            <button class="btn-auth secondary" onclick="showLogin()">返回登入 Back to Login</button>
+            <div class="auth-error" id="registerError"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="appContainer" style="display: none;">
+        <div class="sync-status online" id="syncStatus">
+            <span id="syncIcon">🟢</span>
+            <span id="syncText">本機儲存 Local only</span>
+        </div>
+        <div class="user-badge" id="userBadge">👷 RSS</div>
+
+        <div class="app-header">
+            <h1>🔍 Site Safety Inspection</h1>
+            <p id="headerSubtitle">駐地工程師代表 Representative from RSS</p>
+            <div class="header-actions">
+                <button class="header-btn" onclick="showReportsList()" title="報告列表 Reports">📋</button>
+                <button class="header-btn" onclick="syncData()" title="同步 Sync">🔄</button>
+                <button class="header-btn" onclick="showReportsList()" title="Local mode" title="登出 Logout">🚪</button>
+            </div>
+        </div>
+
+        <!-- Reports List View -->
+        <div class="reports-list" id="reportsListView" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="font-size: 1.25rem; font-weight: 700;">檢查報告列表 Inspection Reports</h2>
+                <button class="btn btn-primary" onclick="newInspection()" id="newReportBtn" style="width: auto; padding: 8px 16px; font-size: 0.875rem;">+ 新報告 New</button>
+            </div>
+            <div id="reportsList"></div>
+        </div>
+
+        <!-- Inspection Form View -->
+        <div id="inspectionFormView">
+            <div class="internal-toolbar">
+                <button class="primary" onclick="saveDraft()">💾 儲存草稿 Save</button>
+                <button onclick="exportLocalBackup()">⬇️ 備份 Backup</button>
+                <label>⬆️ 還原 Restore<input type="file" accept="application/json" onchange="importLocalBackup(this)"></label>
+                <button onclick="clearCurrentSelection()">🧹 清除選擇 Clear</button>
+                <span class="autosave-state" id="autosaveState">本機模式 Local only</span>
+            </div>
+            <div class="progress-bar">
+                <span class="progress-text">進度</span>
+                <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+                <span class="progress-text" id="progressText">0/15</span>
+            </div>
+
+            <div class="mode-toggle">
+                <button class="mode-btn active" onclick="showView('select')">選擇項目</button>
+                <button class="mode-btn" onclick="showView('inspect')">進行檢查</button>
+                <button class="mode-btn" onclick="showView('summary')">檢查摘要</button>
+            </div>
+
+            <div class="category-grid" id="selectView"></div>
+
+            <div class="inspection-view" id="inspectView">
+                <div class="nav-header">
+                    <button class="back-btn" onclick="showView('select')">←</button>
+                    <div class="nav-title" id="inspectTitle">消防安全</div>
+                </div>
+                <div class="info-input-section">
+                    <div class="info-grid">
+                        <div class="info-field">
+                            <label class="info-label">項目名稱 Project Name *</label>
+                            <input type="text" class="info-input" id="projectName" placeholder="輸入項目名稱...">
+                        </div>
+                        <div class="info-field">
+                            <label class="info-label">檢查編號 Inspection No.</label>
+                            <input type="text" class="info-input" id="inspectionNo" placeholder="自動生成" readonly>
+                        </div>
+                        <div class="info-field">
+                            <label class="info-label">駐地工程師代表 RSS Rep *</label>
+                            <input type="text" class="info-input" id="inspectorName" placeholder="輸入代表姓名...">
+                        </div>
+                        <div class="info-field">
+                            <label class="info-label">承包商代表 Contractor Rep *</label>
+                            <input type="text" class="info-input" id="contractorName" placeholder="輸入承包商代表...">
+                        </div>
+                        <div class="info-field">
+                            <label class="info-label">承包商電郵 Contractor Email *</label>
+                            <input type="email" class="info-input" id="contractorEmail" placeholder="輸入承包商電郵...">
+                        </div>
+                        <div class="info-field">
+                            <label class="info-label">日期 Date *</label>
+                            <input type="date" class="info-input" id="inspectionDate">
+                        </div>
+                        <div class="info-field">
+                            <label class="info-label">天氣 Weather</label>
+                            <input type="text" class="info-input" id="weather" placeholder="輸入天氣狀況...">
+                        </div>
+                    </div>
+                </div>
+                <div id="inspectContent"></div>
+            </div>
+
+            <div class="summary-view" id="summaryView">
+                <div class="summary-card">
+                    <div class="summary-title">檢查摘要 Inspection Summary</div>
+                    <div class="summary-stats">
+                        <div class="stat-box"><div class="stat-number" id="totalItems">0</div><div class="stat-label">已檢查項目</div></div>
+                        <div class="stat-box"><div class="stat-number" id="passItems">0</div><div class="stat-label">合格 PASS</div></div>
+                        <div class="stat-box"><div class="stat-number" id="failItems">0</div><div class="stat-label">不合格 FAIL</div></div>
+                        <div class="stat-box"><div class="stat-number" id="naItems">0</div><div class="stat-label">不適用 N/A</div></div>
+                    </div>
+                </div>
+                <div class="summary-card" id="issuesCard" style="display: none;">
+                    <div class="summary-title">發現的問題 Issues Found</div>
+                    <div class="issue-list" id="issueList"></div>
+                </div>
+                <div class="summary-card" id="actionCard">
+                    <div class="summary-title">報告操作 Report Actions</div>
+                    <div style="display: grid; gap: 10px;">
+                        <button class="btn btn-primary" onclick="saveAndNotify()" id="saveNotifyBtn">💾 保存並通知承包商 Save & Notify</button>
+                        <button class="btn btn-secondary" onclick="generateReport('pdf')">📄 生成 PDF 報告</button>
+                        <button class="btn btn-secondary" onclick="generateReport('word')">📝 生成 Word 文檔</button>
+                        <button class="btn btn-success" onclick="submitContractorResponse()" id="submitResponseBtn" style="display: none;">✓ 提交回覆並閉合 Submit & Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-actions" id="bottomActions">
+            <button class="btn btn-secondary" onclick="resetInspection()">🔄 重置 Reset</button>
+            <button class="btn btn-primary" onclick="saveDraft()" id="saveDraftBtn">💾 保存草稿 Save Draft</button>
+        </div>
+    </div>
+
+    <!-- Email Notification Dialog -->
+    <div class="email-dialog" id="emailDialog">
+        <div class="email-box">
+            <div class="email-title">📧 發送電郵通知 Send Email Notification</div>
+            <div class="email-field">
+                <label class="email-label">收件人 To</label>
+                <input type="email" class="email-input" id="emailTo" readonly>
+            </div>
+            <div class="email-field">
+                <label class="email-label">主旨 Subject</label>
+                <input type="text" class="email-input" id="emailSubject" readonly>
+            </div>
+            <div class="email-field">
+                <label class="email-label">郵件內容 Message</label>
+                <div class="email-preview" id="emailBody"></div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-secondary" onclick="closeEmailDialog()" style="flex: 1;">取消 Cancel</button>
+                <button class="btn btn-primary" onclick="confirmSendEmail()" style="flex: 1;">發送 Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">處理中 Processing...</div>
+        </div>
+    </div>
+
+    <script>
+
+        // ==================== CONFIGURATION ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDSXWI11KhP7U1q7dHVupUpGbAhyKYqbq8",
+            authDomain: "site-safety-inspection-eb178.firebaseapp.com",
+            databaseURL: "https://site-safety-inspection-eb178-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "site-safety-inspection-eb178",
+            storageBucket: "site-safety-inspection-eb178.firebasestorage.app",
+            messagingSenderId: "1084929396281",
+            appId: "1:1084929396281:web:3c584e0057850fa79847e8"
+        };
+
+        // Initialize Firebase (Base64 mode - no Storage needed)
+        let app, auth, database; // storage removed - using Base64
+        let isFirebaseInitialized = false;
+        let forceLogoutPromise = Promise.resolve(); // 用於等待強制登出完成
+
+        try {
+            if (false && firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+                app = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                database = firebase.database();
+                // storage = firebase.storage(); // removed - using Base64
+                isFirebaseInitialized = true;
+                console.log('Firebase initialized successfully');
+
+                // 開發測試模式：強制登出所有用戶（確保必須重新註冊/登入）
+                // 生產環境請移除此段代碼
+                auth.signOut().then(() => {
+                    console.log('Development mode: Force logout on init');
+                }).catch(e => {
+                    console.log('No user to logout or error:', e);
+                });
+            } else {
+                console.error('Firebase API Key not configured');
+            }
+        } catch (e) {
+            console.error('Firebase init failed:', e);
+            alert('Firebase 初始化失敗，請檢查網絡連接和配置\nFirebase initialization failed: ' + e.message);
+        }
+
+        // ==================== SERVICE WORKER ====================
+        if ('serviceWorker' in navigator && window.top === window.self) {
+            const swCode = `const CACHE_NAME='safety-v3-base64';self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(['/','/index.html'])));});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));});`;
+            const blob = new Blob([swCode], {type:'application/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(blob));
+        }
+
+        // ==================== DATA ====================
+        const inspectionData = {
+            fire: { name: "消防安全 / Fire Safety", items: [
+                { id: "F1", title: "Fire extinguishers provided and accessible", titleCN: "滅火筒配置妥當並可取用", priority: "high", freq: "Daily" },
+                { id: "F2", title: "Housekeeping maintained to minimize fire hazards", titleCN: "保持整潔以減少火災危險", priority: "medium", freq: "Daily" },
+                { id: "F3", title: "Fire extinguisher certificate valid and not expired", titleCN: "滅火筒證書有效且未過期", priority: "critical", freq: "Weekly" },
+                { id: "F4", title: "Fire extinguisher properly hung above ground", titleCN: "滅火筒妥善懸掛於地面以上", priority: "medium", freq: "Daily" },
+                { id: "F5", title: "Damaged or defective fire extinguisher replaced", titleCN: "損壞或故障滅火筒已更換", priority: "high", freq: "Daily" },
+                { id: "F6", title: "Fire extinguisher provided at chemical storage area", titleCN: "化學品儲存區配置滅火筒", priority: "critical", freq: "Daily" },
+                { id: "F7", title: "Fire extinguisher provided at electricity distribution board", titleCN: "配電板配置滅火筒", priority: "high", freq: "Daily" }
+            ]},
+            electrical: { name: "電氣安全 / Electrical Safety", items: [
+                { id: "E1", title: "Generators properly earthed", titleCN: "發電機妥善接地", priority: "high", freq: "Weekly" },
+                { id: "E2", title: "Power cables properly managed", titleCN: "電源線妥善管理", priority: "high", freq: "Daily" },
+                { id: "E3", title: "Waterproof socket of electric arc welding repaired", titleCN: "電弧焊防水插座已修復", priority: "critical", freq: "Daily" },
+                { id: "E4", title: "No water spillage on top of electric switch box", titleCN: "電制箱頂部無水溢出", priority: "critical", freq: "Daily" },
+                { id: "E5", title: "Water tank relocated to prevent spillage on electrics", titleCN: "水箱重新放置防止電氣設備受濕", priority: "critical", freq: "Daily" },
+                { id: "E6", title: "Welding equipment properly stored and maintained", titleCN: "焊接設備妥善存放及保養", priority: "medium", freq: "Daily" },
+                { id: "E7", title: "Defective welding clamp replaced", titleCN: "損壞焊接夾具已更換", priority: "high", freq: "Daily" },
+                { id: "E8", title: "Power cables hanged above head level", titleCN: "電源線懸掛於頭部高度以上", priority: "high", freq: "Daily" },
+                { id: "E9", title: "Power cables not hanged on sharp objects", titleCN: "電源線不懸掛於尖銳物件上", priority: "high", freq: "Daily" },
+                { id: "E10", title: "Pre-use inspection conducted for portable power tools", titleCN: "手提電動工具使用前檢查", priority: "high", freq: "Daily" }
+            ]},
+            lifting: { name: "起重作業 / Lifting Operations", items: [
+                { id: "L1", title: "Lifting gear properly attached", titleCN: "起重設備正確連接", priority: "critical", freq: "Each Lift" },
+                { id: "L2", title: "Shackles have valid certificates and ID marks", titleCN: "卸扣具有有效證書及標識", priority: "medium", freq: "Weekly" },
+                { id: "L3", title: "Wire slings and shackles properly color-coded", titleCN: "鋼絲繩及卸扣正確顏色編碼", priority: "medium", freq: "Weekly" },
+                { id: "L4", title: "Area under crane jib fenced off", titleCN: "吊臂下方區域圍封", priority: "high", freq: "Daily" },
+                { id: "L5", title: "Crane operators trained and competent", titleCN: "起重機操作員經過培訓並具資格", priority: "high", freq: "Weekly" },
+                { id: "L6", title: "Two different objects not lifted at same time", titleCN: "不同物件不會同時吊運", priority: "critical", freq: "Each Lift" },
+                { id: "L7", title: "Certified lifting receptacle used for loose materials", titleCN: "散料使用認證起重容器", priority: "high", freq: "Daily" },
+                { id: "L8", title: "Lifting load not exceeding skip level", titleCN: "起吊負載不超過容器邊緣", priority: "critical", freq: "Each Lift" },
+                { id: "L9", title: "Lifting riggers and signalers stay away from fatal zone", titleCN: "起重工及訊號員遠離危險區域", priority: "critical", freq: "Each Lift" },
+                { id: "L10", title: "Defective hooks replaced immediately", titleCN: "損壞吊鉤立即更換", priority: "critical", freq: "Daily" },
+                { id: "L11", title: "Retractable fall arrestor properly installed at loading point", titleCN: "伸縮防墜器正確安裝於吊點", priority: "critical", freq: "Daily" },
+                { id: "L12", title: "Wire clamps installed at equal intervals and maintained", titleCN: "鋼絲繩夾等距安裝及保養", priority: "high", freq: "Weekly" },
+                { id: "L13", title: "Lifting gear properly rested on ground when not in use", titleCN: "吊具不使用時妥善放置於地面", priority: "medium", freq: "Daily" },
+                { id: "L14", title: "Operator standby in cabin when engine running with suspension load", titleCN: "懸掛負載時操作員留守駕駛艙", priority: "critical", freq: "Continuous" }
+            ]},
+            excavator: { name: "挖掘機作業 / Excavator Operations", items: [
+                { id: "X1", title: "Excavator bucket lowered when idling", titleCN: "挖掘機怠速時鏟斗放下", priority: "high", freq: "Daily" },
+                { id: "X2", title: "Safe access/egress for operators", titleCN: "操作員安全進出通道", priority: "medium", freq: "Daily" },
+                { id: "X3", title: "Side mirrors provided and maintained", titleCN: "側視鏡配置並妥善維護", priority: "high", freq: "Daily" },
+                { id: "X4", title: "Rear-view camera properly installed and adjusted", titleCN: "後視攝像頭妥善安裝及調校", priority: "high", freq: "Daily" },
+                { id: "X5", title: "CCTV angle adjusted for proper visibility", titleCN: "CCTV角度調校確保視野清晰", priority: "medium", freq: "Daily" },
+                { id: "X6", title: "Headroom limit signal provided", titleCN: "限高警示信號設置", priority: "high", freq: "Daily" },
+                { id: "X7", title: "No smoking during plant operation", titleCN: "機械操作時禁止吸煙", priority: "critical", freq: "Continuous" }
+            ]},
+            piling: { name: "打樁作業 / Piling Operations", items: [
+                { id: "P1", title: "Pile casings properly secured", titleCN: "樁套管妥善固定", priority: "high", freq: "Daily" },
+                { id: "P2", title: "Pile openings covered", titleCN: "樁孔覆蓋", priority: "critical", freq: "Daily" },
+                { id: "P3", title: "Piling rig operation zones fenced off", titleCN: "打樁機作業區圍封", priority: "critical", freq: "Daily" },
+                { id: "P4", title: "Shut pins properly installed", titleCN: "鎖銷正確安裝", priority: "medium", freq: "Daily" },
+                { id: "P5", title: "Dust tube/cover lowered as low as possible", titleCN: "防塵管/罩降至最低位置", priority: "medium", freq: "Daily" },
+                { id: "P6", title: "R-pin provided for connections", titleCN: "連接處提供R型銷", priority: "high", freq: "Daily" },
+                { id: "P7", title: "Travel limit device checked by competent person", titleCN: "行程限位裝置由合資格人士檢查", priority: "critical", freq: "Weekly" },
+                { id: "P8", title: "Key not remained at valve of pressure vessel", titleCN: "壓力容器閥門無遺留鑰匙", priority: "critical", freq: "Daily" }
+            ]},
+            falling: { name: "防墜物保護 / Falling Objects Protection", items: [
+                { id: "O1", title: "Rope nets on water tanks", titleCN: "水箱上設置繩網", priority: "medium", freq: "Weekly" },
+                { id: "O2", title: "Protruding bars/objects removed or guarded", titleCN: "突出鋼筋/物件移除或保護", priority: "high", freq: "Daily" },
+                { id: "O3", title: "Fall protection provided for work above 2 meters", titleCN: "2米以上工作提供防墜保護", priority: "critical", freq: "Daily" },
+                { id: "O4", title: "Proper guardrails at platform edges", titleCN: "平台邊緣設置適當護欄", priority: "critical", freq: "Daily" },
+                { id: "O5", title: "Insecure hanging objects removed or securely fixed", titleCN: "不穩固懸掛物件移除或牢固固定", priority: "critical", freq: "Daily" },
+                { id: "O6", title: "Hand tools equipped with tag line when working at height", titleCN: "高處作業手工具配備防墜繩", priority: "high", freq: "Daily" }
+            ]},
+            ppe: { name: "個人防護裝備 / Personal Protective Equipment", items: [
+                { id: "S1", title: "Eye protection used during grinding", titleCN: "打磨時佩戴眼部防護", priority: "critical", freq: "Continuous" },
+                { id: "S2", title: "Eye protection used during grout mixing", titleCN: "灌漿混合時佩戴眼部防護", priority: "critical", freq: "Continuous" },
+                { id: "S3", title: "Face shield provided for handling chemical substances", titleCN: "處理化學物質時提供面罩", priority: "critical", freq: "Continuous" },
+                { id: "S4", title: "PPE stored properly when not in use", titleCN: "個人防護裝備不使用時妥善存放", priority: "medium", freq: "Daily" },
+                { id: "S5", title: "Sunshade securely placed to prevent turnover", titleCN: "遮陽傘穩固放置防止翻倒", priority: "medium", freq: "Daily" },
+                { id: "S6", title: "Rigid umbrella stand provided instead of plastic barrier", titleCN: "使用剛性傘座而非塑料圍欄", priority: "medium", freq: "Daily" }
+            ]},
+            housekeeping: { name: "場地整理 / Housekeeping", items: [
+                { id: "H1", title: "Oil leaks cleaned immediately", titleCN: "漏油立即清理", priority: "medium", freq: "Daily" },
+                { id: "H2", title: "Residual fuel in hoses treated", titleCN: "軟管中殘留燃料處理", priority: "high", freq: "Daily" },
+                { id: "H3", title: "Uneven and slippery floor fixed", titleCN: "不平及濕滑地面修復", priority: "high", freq: "Daily" },
+                { id: "H4", title: "Slippery footpath cleared", titleCN: "濕滑人行道清理", priority: "high", freq: "Daily" },
+                { id: "H5", title: "Equipment not placed on stockpile", titleCN: "設備不放置於料堆上", priority: "medium", freq: "Daily" },
+                { id: "H6", title: "Unsafe placement of materials improved", titleCN: "不當物料放置改善", priority: "medium", freq: "Daily" },
+                { id: "H7", title: "Objects moved away from excavation edge", titleCN: "物件移離挖掘邊緣", priority: "high", freq: "Daily" },
+                { id: "H8", title: "Stagnant water removed promptly", titleCN: "積水及時清理", priority: "high", freq: "Daily" },
+                { id: "H9", title: "Chemical substances storage area fenced off", titleCN: "化學品儲存區圍封", priority: "critical", freq: "Daily" },
+                { id: "H10", title: "Sandbags provided to prevent mud water discharge to public", titleCN: "沙包防止泥水排放至公共區域", priority: "high", freq: "Daily" }
+            ]},
+            access: { name: "進出通道 / Access & Egress", items: [
+                { id: "A1", title: "Working platforms sufficient width", titleCN: "工作平台寬度足夠", priority: "high", freq: "Daily" },
+                { id: "A2", title: "Trapping hazards eliminated on footpaths", titleCN: "消除通道上的 trapping 危險", priority: "medium", freq: "Daily" },
+                { id: "A3", title: "Sharp edges of planking guarded", titleCN: "木板銳邊保護", priority: "medium", freq: "Daily" },
+                { id: "A4", title: "Slope edges fenced off", titleCN: "斜坡邊緣圍封", priority: "medium", freq: "Daily" },
+                { id: "A5", title: "Safe access and egress maintained at all workplaces", titleCN: "所有工作場所保持安全進出通道", priority: "critical", freq: "Daily" },
+                { id: "A6", title: "Ladder platform properly stored", titleCN: "梯子平台妥善存放", priority: "medium", freq: "Daily" },
+                { id: "A7", title: "Defective ladder removed from use", titleCN: "損壞梯子禁止使用", priority: "critical", freq: "Daily" },
+                { id: "A8", title: "Hoses relocated away from staircase", titleCN: "軟管移離樓梯", priority: "medium", freq: "Daily" },
+                { id: "A9", title: "Sufficient illumination provided at workplace", titleCN: "工作場所照明充足", priority: "high", freq: "Daily" },
+                { id: "A10", title: "Uneven metal plates fixed to prevent tripping", titleCN: "不平鋼板修復防止絆倒", priority: "high", freq: "Daily" }
+            ]},
+            rules: { name: "地盤規定 / Site Rules", items: [
+                { id: "R1", title: "No smoking policy enforced", titleCN: "執行禁煙規定", priority: "high", freq: "Continuous" },
+                { id: "R2", title: "Typhoon preventive measures taken", titleCN: "採取颱風預防措施", priority: "high", freq: "As Required" },
+                { id: "R3", title: "Smoking prohibited during operating a plant", titleCN: "操作機械時禁止吸煙", priority: "critical", freq: "Continuous" }
+            ]},
+            docs: { name: "文件記錄 / Documentation", items: [
+                { id: "D1", title: "Form 4 for excavation and earthwork displayed (competent person inspection)", titleCN: "挖掘及土方工程表格4張貼及合資格人士檢查", priority: "critical", freq: "Weekly" },
+                { id: "D2", title: "Form 5 for metal scaffolding displayed (competent person details)", titleCN: "金屬棚架表格5張貼及合資格人士詳情", priority: "high", freq: "Weekly" },
+                { id: "D3", title: "Inspection Report Form 1 for chain block prepared", titleCN: "手拉葫蘆檢查報告表格1備妥", priority: "high", freq: "Weekly" },
+                { id: "D4", title: "Hot work permit properly filled with recipient name", titleCN: "熱工序許可證正確填寫收件人姓名", priority: "critical", freq: "Daily" }
+            ]},
+            excavation: { name: "挖掘與斜坡 / Excavation & Slope", items: [
+                { id: "V1", title: "Rigid barriers along slope edges installed", titleCN: "斜坡邊緣安裝剛性圍欄", priority: "critical", freq: "Daily" },
+                { id: "V2", title: "Safe angle excavation provided", titleCN: "提供安全角度挖掘", priority: "critical", freq: "Daily" },
+                { id: "V3", title: "Slope surface protection maintained", titleCN: "斜坡表面保護維護", priority: "high", freq: "Daily" },
+                { id: "V4", title: "Excavation pit beside haul road fenced off", titleCN: "運輸路旁挖掘坑圍封", priority: "critical", freq: "Daily" },
+                { id: "V5", title: "Serious wash off checked by competent person", titleCN: "嚴重沖刷由合資格人士檢查", priority: "critical", freq: "Immediately" },
+                { id: "V6", title: "Plastic barriers removed from slope", titleCN: "斜坡上塑料圍欄移除", priority: "medium", freq: "Daily" }
+            ]},
+            material: { name: "物料儲存 / Material Storage", items: [
+                { id: "M1", title: "Casting properly wedged at both sides", titleCN: "鑄件兩側妥善楔緊", priority: "high", freq: "Daily" },
+                { id: "M2", title: "Rolling objects properly wedged", titleCN: "滾動物件妥善楔緊", priority: "high", freq: "Daily" },
+                { id: "M3", title: "Damaged wedges replaced", titleCN: "損壞楔塊更換", priority: "high", freq: "Daily" },
+                { id: "M4", title: "Pipe rack provided for casing storage", titleCN: "套管儲存提供管架", priority: "medium", freq: "Daily" },
+                { id: "M5", title: "Opening covered for safety", titleCN: "開口覆蓋確保安全", priority: "critical", freq: "Daily" },
+                { id: "M6", title: "Damaged push sticks replaced", titleCN: "損壞推桿更換", priority: "medium", freq: "Daily" },
+                { id: "M7", title: "Casing and drilling rod securely fastened by webbing sling prior to transport", titleCN: "運輸前套管及鑽桿用吊帶牢固綁紮", priority: "critical", freq: "Each Transport" },
+                { id: "M8", title: "Wheel wedges provided to concrete truck when parking at inclined slope", titleCN: "混凝土車斜坡停泊時使用輪擋", priority: "critical", freq: "Daily" },
+                { id: "M9", title: "Outrigger of concrete pump truck rested on ground firmly", titleCN: "混凝土泵車支腿穩固支撐於地面", priority: "critical", freq: "Each Setup" }
+            ]},
+            confined: { name: "密閉空間 / Confined Space", items: [
+                { id: "C1", title: "Lifebuoy provided at sump pit", titleCN: "集水坑提供救生圈", priority: "critical", freq: "Daily" },
+                { id: "C2", title: "Tripping hazards eliminated near openings", titleCN: "開口附近絆倒危險消除", priority: "high", freq: "Daily" },
+                { id: "C3", title: "Gap fully covered", titleCN: "縫隙完全覆蓋", priority: "critical", freq: "Daily" }
+            ]},
+            welding: { name: "焊接切割作業 / Welding & Cutting", items: [
+                { id: "W1", title: "Non-return valves provided at torch connection", titleCN: "焊炬連接處設置回火防止閥", priority: "critical", freq: "Daily" },
+                { id: "W2", title: "Aging gas hoses for flame cutting set replaced", titleCN: "老化火焰切割氣喉更換", priority: "critical", freq: "Daily" },
+                { id: "W3", title: "Air hose checked and fixed by competent person when torn", titleCN: "氣喉破損時由合資格人士檢查修復", priority: "critical", freq: "Immediately" },
+                { id: "W4", title: "Power cables removed from gas cylinder cage", titleCN: "電源線移離氣瓶籠", priority: "high", freq: "Daily" },
+                { id: "W5", title: "Valid hot-work permit available", titleCN: "有效熱工序許可證備妥", priority: "critical", freq: "Each Operation" }
+            ]}
+        };
+
+        // ==================== STATE ====================
+        let selectedCategories = new Set();
+        let selectedSubItems = new Set();
+        let inspectionResults = {};
+        let currentCategory = null;
+        let currentReportId = null;
+        let currentUser = null;
+        let userProfile = null;
+        let userRole = 'inspector';
+        let isOffline = false;
+        let pendingSync = [];
+        let currentView = 'list';
+        let currentReportData = null;
+
+        // ==================== INITIALIZATION ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded');
+            console.log('Firebase Initialized:', isFirebaseInitialized);
+
+            document.getElementById('inspectionDate').valueAsDate = new Date();
+            renderCategories();
+            checkOnlineStatus();
+
+            // Direct-use local mode: no login is required.
+            currentUser = { uid: 'local-device-user' };
+            userProfile = { name: '', role: 'inspector', localOnly: true };
+            userRole = 'inspector';
+            isOffline = true;
+            showApp();
+            showReportsList();
+
+            window.addEventListener('online', () => updateOnlineStatus(true));
+            window.addEventListener('offline', () => updateOnlineStatus(false));
+
+            console.log('Initialization complete');
+        });
+
+        function checkAuthState() {
+            if (isFirebaseInitialized) {
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentUser = user;
+                        loadUserProfile(user.uid);
+                    } else {
+                        showAuth();
+                    }
+                });
+            } else {
+                // Firebase 未初始化，顯示登入頁面
+                showAuth();
+            }
+        }
+
+        function loadUserProfile(uid) {
+            if (!isFirebaseInitialized) return;
+
+            database.ref('users/' + uid).once('value')
+                .then(snapshot => {
+                    userProfile = snapshot.val();
+                    if (userProfile) {
+                        userRole = userProfile.role || 'inspector';
+                    } else {
+                        // 用戶資料不存在，創建默認資料
+                        userProfile = { 
+                            email: currentUser ? currentUser.email : '', 
+                            name: currentUser && currentUser.email ? currentUser.email.split('@')[0] : 'User',
+                            role: 'inspector' 
+                        };
+                        userRole = 'inspector';
+                    }
+                    showApp();
+                    showReportsList();
+                })
+                .catch(err => {
+                    console.error('Error loading profile:', err);
+                    // 即使出錯也使用默認資料
+                    userProfile = { 
+                        email: currentUser ? currentUser.email : '', 
+                        name: 'User',
+                        role: 'inspector' 
+                    };
+                    userRole = 'inspector';
+                    showApp();
+                    showReportsList();
+                });
+        }
+
+        function checkOnlineStatus() {
+            updateOnlineStatus(navigator.onLine);
+        }
+
+        function updateOnlineStatus(online) {
+            isOffline = !online;
+            const banner = document.getElementById('offlineBanner');
+            const status = document.getElementById('syncStatus');
+            const icon = document.getElementById('syncIcon');
+            const text = document.getElementById('syncText');
+
+            if (online) {
+                banner.classList.remove('active');
+                status.className = 'sync-status online';
+                icon.textContent = '🟢';
+                text.textContent = '本機儲存 Local only';
+            } else {
+                banner.classList.add('active');
+                status.className = 'sync-status offline';
+                icon.textContent = '🔴';
+                text.textContent = '離線 Offline';
+            }
+        }
+
+        // ==================== AUTHENTICATION ====================
+        function showLogin() {
+            document.getElementById('loginBox').style.display = 'block';
+            document.getElementById('registerBox').style.display = 'none';
+        }
+
+        function showRegister() {
+            document.getElementById('loginBox').style.display = 'none';
+            document.getElementById('registerBox').style.display = 'block';
+        }
+
+        let regRole = 'inspector';
+        function selectRegRole(role) {
+            regRole = role;
+            document.querySelectorAll('#registerBox .role-option').forEach(opt => opt.classList.remove('selected'));
+            document.querySelector(`#registerBox [data-role="${role}"]`).classList.add('selected');
+        }
+
+        function register() {
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
+            const name = document.getElementById('regName').value;
+            const company = document.getElementById('regCompany').value;
+            const errorDiv = document.getElementById('registerError');
+
+            if (!email || !password || !name) {
+                errorDiv.textContent = '請填寫所有必填欄位 Please fill all required fields';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (password.length < 6) {
+                errorDiv.textContent = '密碼至少6位 Password must be at least 6 characters';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorDiv.textContent = '密碼不一致 Passwords do not match';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            showLoading('註冊中 Registering...');
+
+            if (isFirebaseInitialized) {
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then(userCredential => {
+                        const user = userCredential.user;
+                        const profile = {
+                            email: email,
+                            name: name,
+                            company: company,
+                            role: regRole,
+                            createdAt: Date.now()
+                        };
+
+                        return database.ref('users/' + user.uid).set(profile)
+                            .then(() => {
+                                currentUser = user;
+                                userProfile = profile;
+                                userRole = regRole;
+                                hideLoading();
+                                showApp();
+                                showReportsList();
+                            });
+                    })
+                    .catch(error => {
+                        console.error('Login error:', error);
+                        hideLoading();
+                        errorDiv.textContent = error.message;
+                        errorDiv.style.display = 'block';
+                    });
+            } else {
+                hideLoading();
+                errorDiv.textContent = '系統初始化失敗，請檢查網絡連接後重試 System initialization failed, please check network and retry';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        function login() {
+            console.log('Login function called');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+
+            if (!email || !password) {
+                errorDiv.textContent = '請輸入電郵和密碼 Please enter email and password';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            console.log('Attempting login with:', email);
+            showLoading('登入中 Logging in...');
+
+            if (isFirebaseInitialized) {
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(userCredential => {
+                        currentUser = userCredential.user;
+                        hideLoading();
+                        loadUserProfile(currentUser.uid);
+                    })
+                    .catch(error => {
+                        console.error('Login error:', error);
+                        hideLoading();
+                        errorDiv.textContent = error.message;
+                        errorDiv.style.display = 'block';
+                    });
+            } else {
+                hideLoading();
+                errorDiv.textContent = '系統初始化失敗，請檢查網絡連接後重試 System initialization failed, please check network and retry';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        function logout() {
+            if (isFirebaseInitialized && auth.currentUser) {
+                auth.signOut();
+            }
+            currentUser = null;
+            userProfile = null;
+            selectedCategories.clear();
+            selectedSubItems.clear();
+            inspectionResults = {};
+            showAuth();
+        }
+
+        function forceLogout() {
+            if (confirm('確定要清除登入狀態嗎？這將使您需要重新登入。\nAre you sure you want to clear login state? You will need to login again.')) {
+                if (isFirebaseInitialized && auth.currentUser) {
+                    auth.signOut().then(() => {
+                        currentUser = null;
+                        userProfile = null;
+                        selectedCategories.clear();
+                        inspectionResults = {};
+                        showAuth();
+                        alert('已登出 Logged out');
+                    }).catch(err => {
+                        console.error('Logout error:', err);
+                        // 強制清除本地狀態
+                        currentUser = null;
+                        userProfile = null;
+                        selectedCategories.clear();
+                        inspectionResults = {};
+                        showAuth();
+                    });
+                } else {
+                    currentUser = null;
+                    userProfile = null;
+                    selectedCategories.clear();
+                    inspectionResults = {};
+                    showAuth();
+                    alert('已登出 Logged out');
+                }
+            }
+        }
+
+        function showAuth() { showApp(); showReportsList(); }
+
+        function showApp() {
+            document.getElementById('authContainer').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+
+            const badge = document.getElementById('userBadge');
+            const subtitle = document.getElementById('headerSubtitle');
+            const newReportBtn = document.getElementById('newReportBtn');
+
+            if (userRole === 'inspector') {
+                badge.textContent = '👷 RSS';
+                subtitle.textContent = '駐地工程師代表 ' + (userProfile?.name || '');
+                newReportBtn.style.display = 'block';
+            } else {
+                badge.textContent = '🏗️ Contractor';
+                subtitle.textContent = '承包商 ' + (userProfile?.company || '');
+                newReportBtn.style.display = 'none';
+            }
+        }
+
+        // ==================== REPORTS MANAGEMENT ====================
+        function showReportsList() {
+            currentView = 'list';
+            document.getElementById('reportsListView').style.display = 'block';
+            document.getElementById('inspectionFormView').style.display = 'none';
+            document.getElementById('bottomActions').style.display = 'none';
+
+            loadReports();
+        }
+
+        function loadReports() {
+            const listContainer = document.getElementById('reportsList');
+            listContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #6b7280;">載入中 Loading...</div>';
+
+            if (!isFirebaseInitialized || isOffline) {
+                // Load from localStorage
+                const reports = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('safety_inspection_')) {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        reports.push(data);
+                    }
+                }
+                renderReportsList(reports);
+                return;
+            }
+
+            // Load from Firebase
+            const query = userRole === 'inspector' 
+                ? database.ref('inspections').orderByChild('inspectorId').equalTo(currentUser.uid)
+                : database.ref('inspections').orderByChild('contractorEmail').equalTo(currentUser.email);
+
+            query.once('value')
+                .then(snapshot => {
+                    const reports = [];
+                    snapshot.forEach(child => {
+                        reports.push(child.val());
+                    });
+                    renderReportsList(reports);
+                })
+                .catch(err => {
+                    console.error('Error loading reports:', err);
+                    listContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc2626;">載入失敗 Failed to load</div>';
+                });
+        }
+
+        function renderReportsList(reports) {
+            const listContainer = document.getElementById('reportsList');
+
+            if (reports.length === 0) {
+                listContainer.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; color: #6b7280;">
+                        <div style="font-size: 3rem; margin-bottom: 16px;">📋</div>
+                        <div style="font-size: 1.125rem; font-weight: 600; margin-bottom: 8px;">暫無報告 No Reports</div>
+                        <div style="font-size: 0.875rem;">${userRole === 'inspector' ? '點擊「新報告」開始檢查 Click "New Report" to start' : '暫無待處理的檢查報告 No pending reports'}</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by date descending
+            reports.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            let html = '';
+            reports.forEach(report => {
+                const status = report.status || 'pending';
+                const statusClass = status === 'pending' ? 'pending' : status === 'responded' ? 'responded' : 'closed';
+                const statusText = status === 'pending' ? '待回覆 Pending' : status === 'responded' ? '已回覆 Responded' : '已閉合 Closed';
+                const statusBadgeClass = status === 'pending' ? 'status-pending' : status === 'responded' ? 'status-responded' : 'status-closed';
+
+                const date = report.date || new Date(report.timestamp).toLocaleDateString();
+
+                html += `
+                    <div class="report-card ${statusClass}" onclick="openReport('${report.id}')">
+                        <div class="report-header">
+                            <div class="report-id">${report.id}</div>
+                            <div class="report-status ${statusBadgeClass}">${statusText}</div>
+                        </div>
+                        <div class="report-info">📍 ${report.projectName || 'Unknown Project'}</div>
+                        <div class="report-info">👷 RSS: ${report.inspectorName || ''}</div>
+                        <div class="report-info">🏗️ Contractor: ${report.contractorName || ''}</div>
+                        <div class="report-meta">
+                            <span>📅 ${date}</span>
+                            <span>📝 ${report.totalItems || 0} items</span>
+                            ${report.failItems > 0 ? `<span style="color: #dc2626;">⚠️ ${report.failItems} issues</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            listContainer.innerHTML = html;
+        }
+
+        function newInspection() {
+            if (userRole !== 'inspector') {
+                alert('只有駐地工程師可以創建新報告 Only RSS can create new reports');
+                return;
+            }
+
+            currentView = 'edit';
+            currentReportId = null;
+            currentReportData = null;
+            selectedCategories.clear();
+            inspectionResults = {};
+
+            // Reset form
+            document.getElementById('projectName').value = '';
+            document.getElementById('inspectionNo').value = generateInspectionNo();
+            document.getElementById('inspectorName').value = userProfile?.name || '';
+            document.getElementById('contractorName').value = '';
+            document.getElementById('contractorEmail').value = '';
+            document.getElementById('inspectionDate').valueAsDate = new Date();
+            document.getElementById('weather').value = '';
+
+            document.querySelectorAll('.category-card').forEach(c => c.classList.remove('selected', 'completed'));
+
+            showInspectionForm();
+            updateProgress();
+        }
+
+        function openReport(reportId) {
+            showLoading('載入中 Loading...');
+
+            const loadFromFirebase = () => {
+                database.ref('inspections/' + reportId).once('value')
+                    .then(snapshot => {
+                        const report = snapshot.val();
+                        if (report) {
+                            loadReportData(report);
+                        } else {
+                            hideLoading();
+                            alert('報告不存在 Report not found');
+                        }
+                    })
+                    .catch(err => {
+                        hideLoading();
+                        console.error('Error:', err);
+                        // Try localStorage
+                        const local = localStorage.getItem('safety_inspection_' + reportId);
+                        if (local) {
+                            loadReportData(JSON.parse(local));
+                        }
+                    });
+            };
+
+            if (!isFirebaseInitialized || isOffline) {
+                const local = localStorage.getItem('safety_inspection_' + reportId);
+                if (local) {
+                    setTimeout(() => {
+                        loadReportData(JSON.parse(local));
+                    }, 500);
+                } else {
+                    hideLoading();
+                    alert('報告不存在 Report not found');
+                }
+            } else {
+                loadFromFirebase();
+            }
+        }
+
+        function loadReportData(report) {
+            hideLoading();
+            currentReportData = report;
+            currentReportId = report.id;
+
+            // Load data
+            document.getElementById('projectName').value = report.projectName || '';
+            document.getElementById('inspectionNo').value = report.id;
+            document.getElementById('inspectorName').value = report.inspectorName || '';
+            document.getElementById('contractorName').value = report.contractorName || '';
+            document.getElementById('contractorEmail').value = report.contractorEmail || '';
+            document.getElementById('inspectionDate').value = report.date || '';
+            document.getElementById('weather').value = report.weather || '';
+
+            inspectionResults = report.results || {};
+            selectedCategories = new Set(report.categories || []);
+            selectedSubItems = new Set(report.selectedSubItems || Object.keys(inspectionResults || {}).filter(id => { const r = inspectionResults[id] || {}; return !!(r.status || r.inspectorRemark || r.contractorRemark || r.photos?.length || r.contractorPhotos?.length); }));
+
+            // Update UI
+            document.querySelectorAll('.category-card').forEach(card => {
+                const cat = card.getAttribute('data-category');
+                card.classList.remove('selected', 'completed');
+                if (selectedCategories.has(cat)) {
+                    card.classList.add('completed');
+                }
+            });
+
+            showInspectionForm();
+            updateProgress();
+
+            // Check permissions
+            const isOwner = report.inspectorId === currentUser?.uid;
+            const isContractor = userRole === 'contractor' && report.contractorEmail === currentUser?.email;
+            const isClosed = report.status === 'closed';
+
+            // Set read-only mode
+            const readOnly = (!isOwner && !isContractor) || isClosed;
+            setReadOnly(readOnly, isContractor, isClosed);
+        }
+
+        function setReadOnly(readOnly, isContractor, isClosed) {
+            const form = document.getElementById('inspectionFormView');
+            const saveNotifyBtn = document.getElementById('saveNotifyBtn');
+            const submitResponseBtn = document.getElementById('submitResponseBtn');
+            const saveDraftBtn = document.getElementById('saveDraftBtn');
+
+            if (readOnly) {
+                if (!form.querySelector('.read-only-note')) {
+                    const note = document.createElement('div');
+                    note.className = 'read-only-note';
+                    note.textContent = isClosed ? '🔒 此報告已閉合 This report is closed' : '🔒 只讀模式 Read Only Mode';
+                    form.insertBefore(note, form.firstChild);
+                }
+
+                // Disable inputs
+                form.querySelectorAll('input, textarea, select').forEach(el => {
+                    el.disabled = true;
+                });
+
+                saveNotifyBtn.style.display = 'none';
+                submitResponseBtn.style.display = 'none';
+                saveDraftBtn.style.display = 'none';
+            } else if (isContractor) {
+                // Contractor can only edit contractor sections
+                document.querySelectorAll('.inspector-section input, .inspector-section textarea').forEach(el => {
+                    el.disabled = true;
+                });
+                document.querySelectorAll('.category-card').forEach(el => {
+                    el.style.pointerEvents = 'none';
+                    el.style.opacity = '0.6';
+                });
+
+                saveNotifyBtn.style.display = 'none';
+                submitResponseBtn.style.display = 'block';
+                saveDraftBtn.style.display = 'none';
+            } else {
+                // RSS Inspector
+                saveNotifyBtn.style.display = 'block';
+                submitResponseBtn.style.display = 'none';
+                saveDraftBtn.style.display = 'block';
+            }
+        }
+
+        function showInspectionForm() {
+            document.getElementById('reportsListView').style.display = 'none';
+            document.getElementById('inspectionFormView').style.display = 'block';
+            document.getElementById('bottomActions').style.display = 'flex';
+
+            // Reset view
+            document.getElementById('selectView').style.display = 'grid';
+            document.getElementById('inspectView').classList.remove('active');
+            document.getElementById('summaryView').classList.remove('active');
+        }
+
+        function generateInspectionNo() {
+            const date = new Date();
+            const prefix = 'INS';
+            const timestamp = date.getFullYear().toString().substr(2) + 
+                            String(date.getMonth() + 1).padStart(2, '0') + 
+                            String(date.getDate()).padStart(2, '0');
+            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            return `${prefix}-${timestamp}-${random}`;
+        }
+
+        // ==================== UI FUNCTIONS ====================
+        function renderCategories() {
+            const grid = document.getElementById('selectView');
+            grid.innerHTML = '<div class="selection-summary"><span id="selectedItemCount">未選擇項目 No item selected</span><button onclick="startSelectedInspection()">開始檢查已選項目 Inspect selected</button></div>';
+            const icons = { fire:'🔥', electrical:'⚡', lifting:'🏗️', excavator:'🚜', piling:'🔩', falling:'⛑️', ppe:'🥽', housekeeping:'🧹', access:'🚶', rules:'📋', docs:'📄', excavation:'⛰️', material:'📦', confined:'🕳️', welding:'🔥' };
+            Object.keys(inspectionData).forEach(key => {
+                const cat = inspectionData[key];
+                const card = document.createElement('div');
+                card.className = 'category-card';
+                card.setAttribute('data-category', key);
+                const items = cat.items.map((item, idx) => `<div class="quick-subitem" data-item="${item.id}" onclick="quickPickItem('${key}','${item.id}',event)">${idx+1}. ${item.title}<span class="pick-mark">✓</span></div>`).join('');
+                card.innerHTML = `<div class="check-mark">✓</div><div class="category-icon">${icons[key] || '📋'}</div><div class="category-name">${cat.name.split(' / ')[1] || cat.name}</div><div class="category-count">${cat.items.length} 項 · 點擊即顯示全部</div><div class="quick-subitems">${items}</div>`;
+                card.onclick = (e) => { if (!e.target.closest('.quick-subitem')) toggleCategoryItems(key); };
+                grid.appendChild(card);
+            });
+        }
+
+        function toggleCategoryItems(category) {
+            document.querySelectorAll('.category-card.expanded').forEach(c => {
+                if (c.getAttribute('data-category') !== category) c.classList.remove('expanded');
+            });
+            const card = document.querySelector(`[data-category="${category}"]`);
+            card.classList.toggle('expanded');
+        }
+
+        function quickPickItem(category, itemId, e) {
+            e.stopPropagation();
+            selectedCategories.add(category);
+            const chip = document.querySelector(`[data-item="${itemId}"]`);
+            if (selectedSubItems.has(itemId)) {
+                selectedSubItems.delete(itemId);
+                chip?.classList.remove('active');
+            } else {
+                selectedSubItems.add(itemId);
+                chip?.classList.add('active');
+            }
+            document.querySelector(`[data-category="${category}"]`)?.classList.toggle(
+                'selected', inspectionData[category].items.some(i => selectedSubItems.has(i.id))
+            );
+            updateProgress();
+        }
+
+        function openSelectedItem(category, itemId) {
+            selectedCategories.add(category);
+            selectedSubItems.add(itemId);
+            showCategory(category);
+            setTimeout(() => document.querySelector(`[data-inspection-item="${itemId}"]`)?.scrollIntoView({behavior:'smooth', block:'start'}), 60);
+        }
+
+        function selectCategory(category) {
+            toggleCategoryItems(category);
+        }
+
+        function updateProgress() {
+            let completed = 0, total = 0;
+            selectedCategories.forEach(cat => {
+                inspectionData[cat].items.forEach(item => {
+                    total++;
+                    const result = inspectionResults[item.id];
+                    if (result && (result.photos?.length > 0 || result.contractorPhotos?.length > 0 || result.status)) {
+                        completed++;
+                    }
+                });
+            });
+            const pct = total > 0 ? (completed / total) * 100 : 0;
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('progressText').textContent = `${completed}/${total}`;
+        }
+
+        function showView(view) {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.getElementById('selectView').style.display = 'none';
+            document.getElementById('inspectView').classList.remove('active');
+            document.getElementById('summaryView').classList.remove('active');
+
+            if (view === 'select') {
+                document.getElementById('selectView').style.display = 'grid';
+            } else if (view === 'inspect') {
+                if (selectedCategories.size === 0) {
+                    alert('請先選擇至少一個類別 Please select at least one category');
+                    return;
+                }
+                showFirstCategory();
+            } else if (view === 'summary') {
+                document.getElementById('summaryView').classList.add('active');
+                updateSummary();
+            }
+        }
+
+        function showFirstCategory() {
+            const first = Array.from(selectedCategories)[0];
+            if (first) showCategory(first);
+        }
+
+        function showCategory(category) {
+            currentCategory = category;
+            const data = inspectionData[category];
+            document.getElementById('inspectTitle').textContent = data.name;
+            document.getElementById('selectView').style.display = 'none';
+            document.getElementById('inspectView').classList.add('active');
+
+            let html = '';
+            data.items.forEach((item, idx) => {
+                const result = inspectionResults[item.id] || {};
+                const photos = result.photos || [];
+                const cPhotos = result.contractorPhotos || [];
+                const readOnly = userRole === 'contractor' ? '' : '';
+
+                html += createItemHTML(item, idx, result, photos, cPhotos);
+            });
+
+            // Navigation
+            const cats = Array.from(selectedCategories);
+            const idx = cats.indexOf(category);
+            html += '<div style="display: flex; gap: 10px; margin: 20px 0 40px;">';
+            if (idx > 0) html += `<button class="btn btn-secondary" onclick="showCategory('${cats[idx-1]}')">← 上一項</button>`;
+            if (idx < cats.length - 1) html += `<button class="btn btn-primary" onclick="showCategory('${cats[idx+1]}')" style="margin-left: auto;">下一項 →</button>`;
+            else html += `<button class="btn btn-primary" onclick="completeInspection()" style="margin-left: auto;">完成檢查 ✓</button>`;
+            html += '</div>';
+
+            document.getElementById('inspectContent').innerHTML = html;
+        }
+
+        function createItemHTML(item, idx, result, photos, cPhotos) {
+            const pass = result.status === 'pass' ? 'selected' : '';
+            const fail = result.status === 'fail' ? 'selected' : '';
+            const na = result.status === 'na' ? 'selected' : '';
+
+            let pHtml = photos.map((p, i) => `
+                <div><div class="photo-box has-image">
+                    <div class="photo-preview" style="background-image: url('${p}')"></div>
+                    <button class="remove-photo" onclick="removePhoto('${item.id}', ${i}, 'inspector')">×</button>
+                </div><div class="photo-caption">照片 ${i+1}</div></div>
+            `).join('');
+
+            pHtml += `
+                <div><div class="photo-box">
+                    <label style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;z-index:5;">
+                        <div class="photo-placeholder"><div class="photo-icon">+</div><div class="photo-text">添加照片</div></div>
+                        <input type="file" accept="image/*" onchange="addPhoto('${item.id}', this, 'inspector')" style="display:none;">
+                    </label>
+                </div><div class="photo-caption">添加新照片</div></div>
+            `;
+
+            let cHtml = cPhotos.map((p, i) => `
+                <div><div class="photo-box has-image" style="border-color: #f59e0b;">
+                    <div class="photo-preview" style="background-image: url('${p}')"></div>
+                    <button class="remove-photo" onclick="removePhoto('${item.id}', ${i}, 'contractor')">×</button>
+                </div><div class="photo-caption">整改照 ${i+1}</div></div>
+            `).join('');
+
+            cHtml += `
+                <div><div class="photo-box" style="border-color: #f59e0b;">
+                    <label style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;z-index:5;">
+                        <div class="photo-placeholder" style="color: #92400e;"><div class="photo-icon">+</div><div class="photo-text">添加整改照</div></div>
+                        <input type="file" accept="image/*" onchange="addPhoto('${item.id}', this, 'contractor')" style="display:none;">
+                    </label>
+                </div><div class="photo-caption">添加整改照片</div></div>
+            `;
+
+            return `
+                <div class="checklist-item" data-item="${item.id}">
+                    <div class="item-header">
+                        <span class="item-number">${idx+1}</span>
+                        <div class="item-title">${item.title}</div>
+                        <div class="item-subtitle">${item.titleCN}</div>
+                        <div class="badges">
+                            <span class="badge ${item.priority}">${item.priority}</span>
+                            <span class="badge freq">${item.freq}</span>
+                        </div>
+                    </div>
+                    <div class="status-section">
+                        <label class="status-label">狀態 / Status</label>
+                        <div class="status-options">
+                            <div class="status-option pass ${pass}" onclick="setStatus('${item.id}', 'pass')">
+                                <div class="status-icon">✓</div><div class="status-text">合格 PASS</div>
+                            </div>
+                            <div class="status-option fail ${fail}" onclick="setStatus('${item.id}', 'fail')">
+                                <div class="status-icon">✗</div><div class="status-text">不合格 FAIL</div>
+                            </div>
+                            <div class="status-option na ${na}" onclick="setStatus('${item.id}', 'na')">
+                                <div class="status-icon">−</div><div class="status-text">不適用 N/A</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="inspector-section">
+                        <div class="section-label inspector-label">👷 駐地工程師代表 RSS Representative</div>
+                        <div class="photo-grid">${pHtml}</div>
+                        <div class="remarks-section" style="border-top: none; padding: 12px 0 0 0;">
+                            <textarea class="remarks-field" placeholder="駐地工程師備註..." onchange="saveRemark('${item.id}', 'inspector', this.value)">${result.inspectorRemark || ''}</textarea>
+                        </div>
+                    </div>
+                    <div class="contractor-section">
+                        <div class="section-label contractor-label">🏗️ 承包商 Contractor</div>
+                        <div class="photo-grid">${cHtml}</div>
+                        <div class="remarks-section" style="border-top: none; padding: 12px 0 0 0;">
+                            <textarea class="remarks-field" placeholder="承包商備註..." onchange="saveRemark('${item.id}', 'contractor', this.value)">${result.contractorRemark || ''}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setStatus(itemId, status) {
+            if (!inspectionResults[itemId]) inspectionResults[itemId] = { photos: [], contractorPhotos: [] };
+            inspectionResults[itemId].status = status;
+
+            const item = document.querySelector(`[data-item="${itemId}"]`);
+            item.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
+            item.querySelector(`.status-option.${status}`).classList.add('selected');
+            updateProgress();
+        }
+
+        function addPhoto(itemId, input, type) {
+            if (!input.files || !input.files[0]) return;
+
+            // 檢查檔案大小（限制 2MB）
+            if (input.files[0].size > 2 * 1024 * 1024) {
+                alert('圖片太大，請選擇小於 2MB 的圖片\nImage too large, please select image under 2MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (!inspectionResults[itemId]) inspectionResults[itemId] = { photos: [], contractorPhotos: [] };
+                if (type === 'inspector') {
+                    inspectionResults[itemId].photos.push(e.target.result);
+                } else {
+                    inspectionResults[itemId].contractorPhotos.push(e.target.result);
+                }
+                showCategory(currentCategory);
+                updateProgress();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+
+        function removePhoto(itemId, idx, type) {
+            if (!inspectionResults[itemId]) return;
+            if (type === 'inspector') {
+                inspectionResults[itemId].photos.splice(idx, 1);
+            } else {
+                inspectionResults[itemId].contractorPhotos.splice(idx, 1);
+            }
+            showCategory(currentCategory);
+            updateProgress();
+        }
+
+        function saveRemark(itemId, type, value) {
+            if (!inspectionResults[itemId]) inspectionResults[itemId] = { photos: [], contractorPhotos: [] };
+            if (type === 'inspector') {
+                inspectionResults[itemId].inspectorRemark = value;
+            } else {
+                inspectionResults[itemId].contractorRemark = value;
+            }
+        }
+
+        function completeInspection() {
+            document.querySelector(`[data-category="${currentCategory}"]`)?.classList.add('completed');
+            updateProgress();
+            document.querySelectorAll('.mode-btn')[2].click();
+        }
+
+        function updateSummary() {
+            let total = 0, pass = 0, fail = 0, na = 0;
+            const issues = [];
+
+            selectedCategories.forEach(cat => {
+                inspectionData[cat].items.filter(item => selectedSubItems.has(item.id)).forEach(item => {
+                    const result = inspectionResults[item.id];
+                    if (result && (result.photos?.length > 0 || result.contractorPhotos?.length > 0 || result.status)) {
+                        total++;
+                        if (result.status === 'pass') pass++;
+                        else if (result.status === 'fail') {
+                            fail++;
+                            issues.push({ title: item.title, category: inspectionData[cat].name });
+                        }
+                        else if (result.status === 'na') na++;
+                    }
+                });
+            });
+
+            document.getElementById('totalItems').textContent = total;
+            document.getElementById('passItems').textContent = pass;
+            document.getElementById('failItems').textContent = fail;
+            document.getElementById('naItems').textContent = na;
+
+            const issuesCard = document.getElementById('issuesCard');
+            if (issues.length > 0) {
+                issuesCard.style.display = 'block';
+                document.getElementById('issueList').innerHTML = issues.map(i => `
+                    <div class="issue-item">
+                        <div class="issue-title">${i.title}</div>
+                        <div class="issue-category">${i.category}</div>
+                    </div>
+                `).join('');
+            } else {
+                issuesCard.style.display = 'none';
+            }
+        }
+
+        // ==================== SAVE & NOTIFY ====================
+        function saveDraft() {
+            saveReport('draft');
+        }
+
+        function saveAndNotify() {
+            const contractorEmail = document.getElementById('contractorEmail').value;
+            if (!contractorEmail) {
+                alert('請輸入承包商電郵 Please enter contractor email');
+                return;
+            }
+
+            if (!validateEmail(contractorEmail)) {
+                alert('請輸入有效的電郵地址 Please enter a valid email');
+                return;
+            }
+
+            saveReport('pending', true);
+        }
+
+        function validateEmail(email) {
+            return email.indexOf('@') > 0 && email.indexOf('.', email.indexOf('@')) > 0;
+        }
+
+        function saveReport(status, notify = false) {
+            if (isOffline) {
+                saveToLocal();
+                if (notify) {
+                    alert('離線模式：已保存至本地，連線後將自動同步並發送通知\nOffline mode: Saved locally, will sync and notify when online');
+                } else {
+                    alert('已保存至本地 Saved locally');
+                }
+                return;
+            }
+
+            showLoading(status === 'pending' ? '保存並發送通知 Saving & Notifying...' : '保存中 Saving...');
+
+            const reportData = {
+                id: document.getElementById('inspectionNo').value || generateInspectionNo(),
+                projectName: document.getElementById('projectName').value,
+                inspectorId: currentUser?.uid,
+                inspectorEmail: currentUser?.email,
+                inspectorName: document.getElementById('inspectorName').value,
+                contractorName: document.getElementById('contractorName').value,
+                contractorEmail: document.getElementById('contractorEmail').value,
+                date: document.getElementById('inspectionDate').value,
+                weather: document.getElementById('weather').value,
+                results: inspectionResults,
+                categories: Array.from(selectedCategories),
+                selectedSubItems: Array.from(selectedSubItems),
+                timestamp: Date.now(),
+                status: status,
+                totalItems: parseInt(document.getElementById('totalItems').textContent) || 0,
+                passItems: parseInt(document.getElementById('passItems').textContent) || 0,
+                failItems: parseInt(document.getElementById('failItems').textContent) || 0,
+                naItems: parseInt(document.getElementById('naItems').textContent) || 0
+            };
+
+            if (isFirebaseInitialized) {
+                database.ref('inspections/' + reportData.id).set(reportData)
+                    .then(() => {
+                        hideLoading();
+                        currentReportData = reportData;
+
+                        if (notify) {
+                            showEmailDialog(reportData);
+                        } else {
+                            alert('保存成功 Saved successfully');
+                        }
+                    })
+                    .catch(err => {
+                        hideLoading();
+                        saveToLocal();
+                        alert('保存失敗，已存至本地 Save failed, stored locally');
+                    });
+            } else {
+                setTimeout(() => {
+                    hideLoading();
+                    saveToLocal();
+                    if (notify) {
+                        showEmailDialog(reportData);
+                    } else {
+                        alert('已保存至本地 Saved locally');
+                    }
+                }, 1000);
+            }
+        }
+
+        function saveToLocal() {
+            const data = {
+                id: document.getElementById('inspectionNo').value || generateInspectionNo(),
+                projectName: document.getElementById('projectName').value,
+                inspectorId: currentUser?.uid,
+                inspectorEmail: currentUser?.email,
+                inspectorName: document.getElementById('inspectorName').value,
+                contractorName: document.getElementById('contractorName').value,
+                contractorEmail: document.getElementById('contractorEmail').value,
+                date: document.getElementById('inspectionDate').value,
+                weather: document.getElementById('weather').value,
+                results: inspectionResults,
+                categories: Array.from(selectedCategories),
+                selectedSubItems: Array.from(selectedSubItems),
+                timestamp: Date.now(),
+                status: 'draft',
+                totalItems: parseInt(document.getElementById('totalItems').textContent) || 0,
+                passItems: parseInt(document.getElementById('passItems').textContent) || 0,
+                failItems: parseInt(document.getElementById('failItems').textContent) || 0,
+                naItems: parseInt(document.getElementById('naItems').textContent) || 0
+            };
+            localStorage.setItem('safety_inspection_' + data.id, JSON.stringify(data));
+        }
+
+        // ==================== EMAIL NOTIFICATION ====================
+        function showEmailDialog(report) {
+            const dialog = document.getElementById('emailDialog');
+            const to = document.getElementById('emailTo');
+            const subject = document.getElementById('emailSubject');
+            const body = document.getElementById('emailBody');
+
+            to.value = report.contractorEmail;
+            subject.value = `安全檢查報告 Safety Inspection Report - ${report.id}`;
+
+            const failCount = report.failItems || 0;
+            const issuesText = failCount > 0 ? `發現 ${failCount} 項問題需整改` : '所有檢查項目合格';
+
+            body.textContent = `尊敬的承包商 Contractor,
+
+您有一個新的安全檢查報告需要處理。
+You have a new safety inspection report to address.
+
+報告編號 Report ID: ${report.id}
+項目名稱 Project: ${report.projectName}
+檢查日期 Date: ${report.date}
+駐地工程師 RSS: ${report.inspectorName}
+
+檢查結果 Summary:
+- 總項目 Total: ${report.totalItems}
+- 合格 Pass: ${report.passItems}
+- 不合格 Fail: ${report.failItems}
+- 不適用 N/A: ${report.naItems}
+
+${issuesText}
+
+請登入系統查看詳情並提交回覆：
+Please login to view details and submit response:
+${window.location.origin}${window.location.pathname}
+
+此致，
+Best regards,
+${report.inspectorName}
+駐地工程師代表 RSS Representative`;
+
+            dialog.classList.add('active');
+        }
+
+        function closeEmailDialog() {
+            document.getElementById('emailDialog').classList.remove('active');
+            showReportsList();
+        }
+
+        function confirmSendEmail() {
+            const to = document.getElementById('emailTo').value;
+            const subject = document.getElementById('emailSubject').value;
+            const body = document.getElementById('emailBody').textContent;
+            if (!to) { alert('請輸入收件人電郵 Please enter recipient email'); return; }
+            const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailto;
+            closeEmailDialog();
+        }
+
+        // ==================== CONTRACTOR RESPONSE ====================
+        function submitContractorResponse() {
+            if (userRole !== 'contractor') {
+                alert('只有承包商可以提交回覆 Only contractor can submit response');
+                return;
+            }
+
+            // Check if all fail items have contractor photos or remarks
+            let hasResponse = false;
+            selectedCategories.forEach(cat => {
+                inspectionData[cat].items.filter(item => selectedSubItems.has(item.id)).forEach(item => {
+                    const result = inspectionResults[item.id];
+                    if (result?.status === 'fail') {
+                        if ((result.contractorPhotos?.length > 0) || result.contractorRemark) {
+                            hasResponse = true;
+                        }
+                    }
+                });
+            });
+
+            if (!hasResponse) {
+                if (!confirm('您尚未添加任何整改照片或備註。確定要提交嗎？\nYou haven\'t added any rectification photos or remarks. Submit anyway?')) {
+                    return;
+                }
+            }
+
+            showLoading('提交回覆中 Submitting response...');
+
+            const updatedData = {
+                ...currentReportData,
+                results: inspectionResults,
+                status: 'responded',
+                respondedAt: Date.now(),
+                respondedBy: currentUser?.uid
+            };
+
+            if (isFirebaseInitialized) {
+                database.ref('inspections/' + currentReportId).update({
+                    results: inspectionResults,
+                    status: 'responded',
+                    respondedAt: Date.now(),
+                    respondedBy: currentUser?.uid
+                })
+                .then(() => {
+                    hideLoading();
+                    alert('✓ 回覆已提交成功\nResponse submitted successfully\n\n駐地工程師將收到通知並進行審核。\nThe RSS will be notified for review.');
+                    showReportsList();
+                })
+                .catch(err => {
+                    hideLoading();
+                    alert('提交失敗，請重試 Submit failed, please retry');
+                });
+            } else {
+                setTimeout(() => {
+                    hideLoading();
+                    localStorage.setItem('safety_inspection_' + currentReportId, JSON.stringify(updatedData));
+                    alert('✓ 回覆已提交（離線模式）\nResponse submitted (Offline mode)');
+                    showReportsList();
+                }, 1000);
+            }
+        }
+
+        // ==================== REPORT GENERATION ====================
+        function generateReport(type) {
+            const reportData = {
+                inspectionNo: document.getElementById('inspectionNo').value,
+                projectName: document.getElementById('projectName').value,
+                inspectorName: document.getElementById('inspectorName').value,
+                contractorName: document.getElementById('contractorName').value,
+                contractorEmail: document.getElementById('contractorEmail').value,
+                date: document.getElementById('inspectionDate').value,
+                weather: document.getElementById('weather').value,
+                status: currentReportData?.status || 'draft'
+            };
+
+            if (type === 'pdf') {
+                generatePDF(reportData);
+            } else {
+                generateWord(reportData);
+            }
+        }
+
+        function generatePDF(data) {
+            showLoading('生成 PDF 中 Generating PDF...');
+
+            const printWindow = window.open('', '_blank');
+            const content = generatePrintContent(data);
+            const statusText = data.status === 'closed' ? '已閉合 CLOSED' : data.status === 'responded' ? '已回覆 RESPONDED' : '待處理 PENDING';
+
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Safety Report - ${data.projectName}</title>
+                    <style>
+                        @page { size: A4 portrait; margin: 15mm; }
+                        body { font-family: 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif; font-size: 10pt; line-height: 1.4; }
+                        .header { text-align: center; margin-bottom: 20px; border-bottom: 3px double #000; padding-bottom: 15px; }
+                        .header h1 { font-size: 16pt; margin-bottom: 5px; }
+                        .header h2 { font-size: 12pt; font-weight: normal; margin-bottom: 15px; }
+                        .status-banner { background: ${data.status === 'closed' ? '#16a34a' : data.status === 'responded' ? '#f59e0b' : '#dc2626'}; color: white; padding: 10px; text-align: center; font-weight: bold; margin-bottom: 15px; }
+                        .info-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                        .info-table td { border: 1px solid #000; padding: 8px; }
+                        .info-table .label { background: #f0f0f0; font-weight: bold; width: 25%; }
+                        .item { border: 1px solid #000; margin-bottom: 15px; page-break-inside: avoid; }
+                        .item-header { background: #f5f5f5; padding: 10px; border-bottom: 1px solid #000; }
+                        .item-title { font-weight: bold; font-size: 11pt; }
+                        .item-subtitle { font-size: 9pt; color: #666; margin-top: 4px; }
+                        .status { padding: 5px 10px; margin: 5px 0; font-weight: bold; }
+                        .status.pass { background: #d4edda; color: #155724; }
+                        .status.fail { background: #f8d7da; color: #721c24; }
+                        .photos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px; }
+                        .photo { border: 1px solid #ccc; page-break-inside: avoid; }
+                        .photo img { width: 100%; height: auto; max-height: 150px; object-fit: contain; }
+                        .section { padding: 10px; border-top: 1px solid #ddd; }
+                        .section-title { font-weight: bold; margin-bottom: 8px; }
+                        .inspector { background: #e3f2fd; }
+                        .contractor { background: #fff3e0; }
+                        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; page-break-inside: avoid; }
+                        .signature { text-align: center; }
+                        .signature-line { border-bottom: 1px solid #000; height: 60px; margin-bottom: 8px; }
+                        .footer { margin-top: 30px; font-size: 8pt; text-align: center; color: #666; border-top: 1px solid #ccc; padding-top: 10px; }
+                    </style>
+                
+<style id="internal-control-upgrade">
+.local-only-badge{background:#e0f2fe;color:#075985;padding:7px 11px;border-radius:18px;font-size:.78rem;font-weight:700}
+.internal-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;padding:10px;background:#f8fafc;border:1px solid #dbe3ee;border-radius:12px}
+.internal-toolbar button,.internal-toolbar label{border:1px solid #cbd5e1;background:white;color:#1e3a8a;border-radius:9px;padding:9px 12px;font-weight:650;cursor:pointer;font-size:.82rem}
+.internal-toolbar button.primary{background:#2563eb;color:white;border-color:#2563eb}
+.internal-toolbar input[type=file]{display:none}.autosave-state{margin-left:auto;align-self:center;color:#64748b;font-size:.78rem}
+.selection-summary{grid-column:1/-1;position:sticky;top:0;z-index:5;background:#eff6ff;border:1px solid #93c5fd;padding:10px 12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.selection-summary button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700}
+.quick-subitem .pick-mark{float:right;color:#2563eb;font-weight:900}.quick-subitem:not(.active) .pick-mark{display:none}
+.report-searchbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.report-searchbar input,.report-searchbar select{padding:10px;border:1px solid #cbd5e1;border-radius:9px;min-width:180px}
+.validation-box{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:10px 12px;border-radius:10px;margin:10px 0;font-size:.86rem}
+@media(max-width:700px){.autosave-state{width:100%;margin-left:0}.internal-toolbar button,.internal-toolbar label{flex:1 1 44%;text-align:center}.selection-summary{position:static;align-items:flex-start;flex-direction:column}.selection-summary button{width:100%}}
+</style>
+</head>
+                <body>
+                    <div class="header">
+                        <h1>WEEKLY SAFETY INSPECTION REPORT</h1>
+                        <h2>每週安全檢查報告</h2>
+                        <div class="status-banner">狀態 Status: ${statusText}</div>
+                        <table class="info-table">
+                            <tr><td class="label">項目名稱<br>Project</td><td>${data.projectName || ''}</td>
+                                <td class="label">檢查編號<br>Inspection No.</td><td>${data.inspectionNo || ''}</td></tr>
+                            <tr><td class="label">檢查日期<br>Date</td><td>${data.date || ''}</td>
+                                <td class="label">天氣<br>Weather</td><td>${data.weather || ''}</td></tr>
+                            <tr><td class="label">駐地工程師代表<br>RSS Rep</td><td>${data.inspectorName || ''}</td>
+                                <td class="label">承包商代表<br>Contractor Rep</td><td>${data.contractorName || ''}</td></tr>
+                        </table>
+                    </div>
+                    ${content}
+                    <div class="signatures">
+                        <div class="signature">
+                            <div class="signature-line"></div>
+                            <div><strong>駐地工程師代表<br>RSS Representative</strong></div>
+                            <div style="font-size: 9pt; color: #666; margin-top: 5px;">Date: ${data.date || ''}</div>
+                        </div>
+                        <div class="signature">
+                            <div class="signature-line"></div>
+                            <div><strong>承包商安全代表及安全經理<br>Contractor Safety Rep & Safety Manager</strong></div>
+                            <div style="font-size: 9pt; color: #666; margin-top: 5px;">Date: ${currentReportData?.respondedAt ? new Date(currentReportData.respondedAt).toLocaleDateString() : '_________'}</div>
+                        </div>
+                    </div>
+                    <div class="footer">
+                        <div>This report is generated electronically and is valid without signature.</div>
+                        <div>本報告以電子方式生成，無需簽署即為有效。</div>
+                        <div>Generated: ${new Date().toLocaleString()}</div>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+
+            setTimeout(() => {
+                hideLoading();
+                printWindow.focus();
+                printWindow.print();
+            }, 500);
+        }
+
+        function generateWord(data) {
+            const content = generatePrintContent(data);
+            const statusText = data.status === 'closed' ? '已閉合 CLOSED' : data.status === 'responded' ? '已回覆 RESPONDED' : '待處理 PENDING';
+
+            const html = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><meta charset="utf-8"><title>Safety Report</title>
+<style id="internal-control-upgrade">
+.local-only-badge{background:#e0f2fe;color:#075985;padding:7px 11px;border-radius:18px;font-size:.78rem;font-weight:700}
+.internal-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;padding:10px;background:#f8fafc;border:1px solid #dbe3ee;border-radius:12px}
+.internal-toolbar button,.internal-toolbar label{border:1px solid #cbd5e1;background:white;color:#1e3a8a;border-radius:9px;padding:9px 12px;font-weight:650;cursor:pointer;font-size:.82rem}
+.internal-toolbar button.primary{background:#2563eb;color:white;border-color:#2563eb}
+.internal-toolbar input[type=file]{display:none}.autosave-state{margin-left:auto;align-self:center;color:#64748b;font-size:.78rem}
+.selection-summary{grid-column:1/-1;position:sticky;top:0;z-index:5;background:#eff6ff;border:1px solid #93c5fd;padding:10px 12px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.selection-summary button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700}
+.quick-subitem .pick-mark{float:right;color:#2563eb;font-weight:900}.quick-subitem:not(.active) .pick-mark{display:none}
+.report-searchbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.report-searchbar input,.report-searchbar select{padding:10px;border:1px solid #cbd5e1;border-radius:9px;min-width:180px}
+.validation-box{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:10px 12px;border-radius:10px;margin:10px 0;font-size:.86rem}
+@media(max-width:700px){.autosave-state{width:100%;margin-left:0}.internal-toolbar button,.internal-toolbar label{flex:1 1 44%;text-align:center}.selection-summary{position:static;align-items:flex-start;flex-direction:column}.selection-summary button{width:100%}}
+</style>
+</head>
+                <body>
+                    <h1>WEEKLY SAFETY INSPECTION REPORT / 每週安全檢查報告</h1>
+                    <h2 style="background: ${data.status === 'closed' ? '#16a34a' : data.status === 'responded' ? '#f59e0b' : '#dc2626'}; color: white; padding: 10px; text-align: center;">
+                        狀態 Status: ${statusText}
+                    </h2>
+                    <table border="1" style="width:100%; border-collapse: collapse;">
+                        <tr><td style="background:#f0f0f0; padding:8px;"><b>項目名稱 Project</b></td><td>${data.projectName || ''}</td>
+                            <td style="background:#f0f0f0; padding:8px;"><b>檢查編號 Inspection No.</b></td><td>${data.inspectionNo || ''}</td></tr>
+                        <tr><td style="background:#f0f0f0; padding:8px;"><b>日期 Date</b></td><td>${data.date || ''}</td>
+                            <td style="background:#f0f0f0; padding:8px;"><b>天氣 Weather</b></td><td>${data.weather || ''}</td></tr>
+                        <tr><td style="background:#f0f0f0; padding:8px;"><b>駐地工程師代表 RSS Rep</b></td><td>${data.inspectorName || ''}</td>
+                            <td style="background:#f0f0f0; padding:8px;"><b>承包商代表 Contractor Rep</b></td><td>${data.contractorName || ''}</td></tr>
+                    </table>
+                    <br>
+                    ${content}
+                    <br><br>
+                    <table style="width:100%;">
+                        <tr>
+                            <td style="width:50%; text-align: center;">
+                                <div style="border-bottom: 1px solid #000; height: 60px;"></div>
+                                <b>駐地工程師代表 RSS Representative</b><br>
+                                Date: ${data.date || ''}
+                            </td>
+                            <td style="width:50%; text-align: center;">
+                                <div style="border-bottom: 1px solid #000; height: 60px;"></div>
+                                <b>承包商安全代表及安全經理<br>Contractor Safety Rep & Safety Manager</b><br>
+                                Date: ${currentReportData?.respondedAt ? new Date(currentReportData.respondedAt).toLocaleDateString() : '_________'}
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['﻿', html], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Safety_Report_${data.inspectionNo || 'export'}.doc`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function generatePrintContent(data) {
+            let html = '';
+            selectedCategories.forEach(cat => {
+                const catData = inspectionData[cat];
+                if (!catData.items.some(item => selectedSubItems.has(item.id))) return;
+                html += `<h3 style="color: #1e40af; border-bottom: 2px solid #1e40af; padding-bottom: 5px;">${catData.name}</h3>`;
+
+                catData.items.filter(item => selectedSubItems.has(item.id)).forEach((item, idx) => {
+                    const result = inspectionResults[item.id] || {};
+                    const status = result.status || 'Not checked';
+                    const statusClass = status === 'pass' ? 'pass' : status === 'fail' ? 'fail' : '';
+                    const statusText = status === 'pass' ? '合格 PASS' : status === 'fail' ? '不合格 FAIL' : status === 'na' ? '不適用 N/A' : '未檢查';
+
+                    let photosHtml = '';
+                    if (result.photos?.length > 0) {
+                        photosHtml += `<div class="photos">`;
+                        result.photos.forEach(p => {
+                            photosHtml += `<div class="photo"><img src="${p}"></div>`;
+                        });
+                        photosHtml += `</div>`;
+                    }
+
+                    let cPhotosHtml = '';
+                    if (result.contractorPhotos?.length > 0) {
+                        cPhotosHtml += `<div class="photos">`;
+                        result.contractorPhotos.forEach(p => {
+                            cPhotosHtml += `<div class="photo"><img src="${p}"></div>`;
+                        });
+                        cPhotosHtml += `</div>`;
+                    }
+
+                    html += `
+                        <div class="item">
+                            <div class="item-header">
+                                <div class="item-title">${idx + 1}. ${item.title}</div>
+                                <div class="item-subtitle">${item.titleCN}</div>
+                            </div>
+                            <div style="padding: 10px;">
+                                <div class="status ${statusClass}">狀態 Status: ${statusText}</div>
+                            </div>
+                            <div class="section inspector">
+                                <div class="section-title">👷 RSS Representative</div>
+                                ${photosHtml}
+                                ${result.inspectorRemark ? `<div style="padding: 8px; background: white; margin-top: 8px; border: 1px solid #ddd;"><b>備註 Remark:</b> ${result.inspectorRemark}</div>` : ''}
+                            </div>
+                            <div class="section contractor">
+                                <div class="section-title">🏗️ Contractor</div>
+                                ${cPhotosHtml}
+                                ${result.contractorRemark ? `<div style="padding: 8px; background: white; margin-top: 8px; border: 1px solid #ddd;"><b>備註 Remark:</b> ${result.contractorRemark}</div>` : '<div style="padding: 8px; background: white; margin-top: 8px; border: 1px solid #ddd; min-height: 40px;"><b>備註 Remark:</b> </div>'}
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            return html;
+        }
+
+        // ==================== UTILITIES ====================
+        function syncData() {
+            if (isOffline) {
+                alert('離線模式，無法同步 Offline mode, cannot sync');
+                return;
+            }
+            showLoading('同步中 Syncing...');
+            setTimeout(() => {
+                hideLoading();
+                alert('同步完成 Sync completed');
+                loadReports();
+            }, 1500);
+        }
+
+        function resetInspection() {
+            if (!confirm('重置所有資料？Reset all data?')) return;
+
+            selectedCategories.clear();
+            inspectionResults = {};
+            document.querySelectorAll('.category-card').forEach(c => c.classList.remove('selected', 'completed'));
+            document.getElementById('projectName').value = '';
+            document.getElementById('contractorName').value = '';
+            document.getElementById('contractorEmail').value = '';
+            document.getElementById('weather').value = '';
+            generateInspectionNo();
+            updateProgress();
+            showView('select');
+        }
+
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
+    </script>
+
+<script id="internal-control-logic">
+let autoSaveTimer = null;
+let allRenderedReports = [];
+
+function selectedItemsArray(){ return Array.from(selectedSubItems); }
+function selectedItemObjects(){
+  const result=[];
+  selectedCategories.forEach(cat => inspectionData[cat]?.items.filter(i=>selectedSubItems.has(i.id)).forEach(i=>result.push({category:cat,item:i})));
+  return result;
+}
+function refreshSelectionUI(){
+  const n=selectedSubItems.size;
+  const label=document.getElementById('selectedItemCount');
+  if(label) label.textContent=n ? `已選 ${n} 項 Selected: ${n}` : '未選擇項目 No item selected';
+  document.querySelectorAll('.quick-subitem').forEach(el=>el.classList.toggle('active',selectedSubItems.has(el.dataset.item)));
+  document.querySelectorAll('.category-card').forEach(card=>{
+    const cat=card.dataset.category;
+    card.classList.toggle('selected',inspectionData[cat]?.items.some(i=>selectedSubItems.has(i.id))||false);
+  });
+}
+const originalQuickPickItem=quickPickItem;
+quickPickItem=function(category,itemId,e){ originalQuickPickItem(category,itemId,e); refreshSelectionUI(); scheduleAutoSave(); };
+
+function startSelectedInspection(){
+  if(!selectedSubItems.size){ alert('請先選擇至少一個安全檢查項目。\nPlease select at least one safety item.'); return; }
+  const first=selectedItemObjects()[0];
+  showView('inspect');
+  showCategory(first.category);
+}
+
+const originalShowCategory=showCategory;
+showCategory=function(category){
+  currentCategory=category;
+  const cat=inspectionData[category];
+  const chosen=cat.items.filter(i=>selectedSubItems.has(i.id));
+  document.getElementById('inspectTitle').textContent=cat.name;
+  const content=document.getElementById('inspectionContent');
+  if(!chosen.length){ content.innerHTML='<div class="validation-box">此分類未有選取項目。請返回「選擇項目」。<br>No selected item in this category.</div>'; return; }
+  content.innerHTML=chosen.map((item,idx)=>{
+    const result=inspectionResults[item.id]||{};
+    return createItemHTML(item,idx,result,result.photos||[],result.contractorPhotos||[]);
+  }).join('');
+  let nav='<div class="category-nav">';
+  const cats=Array.from(selectedCategories).filter(c=>inspectionData[c].items.some(i=>selectedSubItems.has(i.id)));
+  cats.forEach(c=>nav+=`<button class="cat-nav-btn ${c===category?'active':''}" onclick="showCategory('${c}')">${inspectionData[c].name.split(' / ')[1]||inspectionData[c].name}</button>`);
+  nav+='</div>'; content.innerHTML=nav+content.innerHTML;
+};
+
+function selectedResultIsTouched(id){ const r=inspectionResults[id]||{}; return !!(r.status||r.inspectorRemark||r.photos?.length); }
+updateProgress=function(){
+  const total=selectedSubItems.size;
+  let done=0; selectedSubItems.forEach(id=>{if(selectedResultIsTouched(id)) done++;});
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressText').textContent=`${done}/${total}`;
+  refreshSelectionUI();
+};
+
+function validateInternalReport(forIssue=false){
+  const errors=[],warnings=[];
+  if(!document.getElementById('projectName').value.trim()) errors.push('Project Name 項目名稱');
+  if(!document.getElementById('inspectorName').value.trim()) errors.push('RSS Rep 駐地工程師代表');
+  if(!selectedSubItems.size) errors.push('至少一個已選安全項目 At least one selected item');
+  selectedItemObjects().forEach(({item})=>{
+    const r=inspectionResults[item.id]||{};
+    if(forIssue&&!r.status) errors.push(`${item.title}: 未選 PASS / FAIL / N/A`);
+    if(r.status==='fail'&&!String(r.inspectorRemark||'').trim()) errors.push(`${item.title}: FAIL 必須填寫問題及跟進要求`);
+    if(r.status==='fail'&&!(r.photos?.length)) warnings.push(`${item.title}: FAIL 建議加入現場相片`);
+  });
+  return {errors,warnings};
+}
+const originalSaveAndNotify=saveAndNotify;
+saveAndNotify=function(){
+  const v=validateInternalReport(true);
+  if(v.errors.length){alert('未能發出報告：\n\n- '+v.errors.join('\n- '));return;}
+  if(v.warnings.length&&!confirm('注意：\n\n- '+v.warnings.join('\n- ')+'\n\n仍要繼續？ Continue?'))return;
+  originalSaveAndNotify();
+};
+
+function scheduleAutoSave(){
+  clearTimeout(autoSaveTimer);
+  const state=document.getElementById('autosaveState'); if(state) state.textContent='尚未儲存 Unsaved';
+  autoSaveTimer=setTimeout(()=>{
+    if(document.getElementById('inspectionFormView')?.style.display!=='none'){
+      try{ saveToLocal(); if(state) state.textContent='✓ 已自動儲存 Autosaved '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }catch(e){ if(state) state.textContent='⚠ 自動儲存失敗'; }
+    }
+  },800);
+}
+document.addEventListener('input',e=>{if(e.target.closest('#inspectionFormView'))scheduleAutoSave();});
+document.addEventListener('change',e=>{if(e.target.closest('#inspectionFormView'))scheduleAutoSave();});
+
+const originalRenderReportsList=renderReportsList;
+renderReportsList=function(reports){ allRenderedReports=reports||[]; originalRenderReportsList(allRenderedReports); };
+function applyReportFilter(){
+  const q=(document.getElementById('reportSearch')?.value||'').trim().toLowerCase();
+  const status=document.getElementById('reportStatusFilter')?.value||'';
+  originalRenderReportsList(allRenderedReports.filter(r=>{
+    const hay=[r.id,r.inspectionNo,r.projectName,r.date,r.inspectorName].join(' ').toLowerCase();
+    return (!q||hay.includes(q))&&(!status||r.status===status);
+  }));
+}
+function exportLocalBackup(){
+  const reports={};
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k?.startsWith('safety_inspection_'))reports[k]=JSON.parse(localStorage.getItem(k));}
+  const blob=new Blob([JSON.stringify({app:'S15 Internal Safety Control',version:1,exportedAt:new Date().toISOString(),reports},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`S15_Safety_Backup_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);
+}
+function importLocalBackup(input){
+  const f=input.files?.[0]; if(!f)return;
+  const reader=new FileReader(); reader.onload=()=>{try{const data=JSON.parse(reader.result);const entries=Object.entries(data.reports||{});if(!entries.length)throw Error('No reports');if(!confirm(`還原 ${entries.length} 份報告？ Existing same-number reports will be replaced.`))return;entries.forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)));alert('還原完成 Restore completed');showReportsList();}catch(e){alert('備份檔案無效 Invalid backup file');}finally{input.value='';}};reader.readAsText(f);
+}
+function clearCurrentSelection(){
+  if(!confirm('清除目前已選項目及其檢查結果？\nClear current selections and results?'))return;
+  selectedSubItems.clear(); selectedCategories.clear(); inspectionResults={}; renderCategories(); updateProgress(); scheduleAutoSave();
+}
+
+const originalLoadReportData=loadReportData;
+loadReportData=function(report){originalLoadReportData(report);setTimeout(()=>{renderCategories();refreshSelectionUI();updateProgress();},0);};
+const originalNewInspection=newInspection;
+newInspection=function(){originalNewInspection();setTimeout(()=>{refreshSelectionUI();updateProgress();},0);};
+
+document.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    const badge=document.getElementById('userBadge');if(badge){badge.textContent='📱 INTERNAL';badge.className='local-only-badge';}
+    const subtitle=document.getElementById('headerSubtitle');if(subtitle)subtitle.textContent='內部安全控制 · 本機儲存 Internal safety control';
+    refreshSelectionUI();updateProgress();
+  },700);
+});
+</script>
+</body>
+</html>
